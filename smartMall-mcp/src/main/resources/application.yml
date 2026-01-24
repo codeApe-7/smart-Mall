@@ -8,7 +8,7 @@ spring:
       max-file-size: 5MB
       max-request-size: 10MB
   datasource:
-    url: jdbc:mysql://localhost:3306/easymall?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+    url: jdbc:mysql://localhost:3306/smartMall?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -25,7 +25,7 @@ spring:
     mcp:
       server:
         protocol: STREAMABLE # STREAMABLE STATELESS
-        name: easymall-mcp  # 服务器名称
+        name: smartMall-mcp  # 服务器名称
         version: 1.0.0
         streamable-http:
           mcp-endpoint: /mcp  #默认是mcp
@@ -36,4 +36,4 @@ mybatis:
 #项目目录
 #项目目录
 project:
-  folder: e:/webser/web_app/easymall/
+  folder: e:/webser/web_app/smartMall/

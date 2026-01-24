@@ -79,11 +79,11 @@
                 <version>${springboot.version}</version>
             </dependency>
             <!-- Elasticsearch -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
-                <version>${springboot.version}</version>
-            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-starter-data-elasticsearch</artifactId>-->
+<!--                <version>${springboot.version}</version>-->
+<!--            </dependency>-->
 
             <!-- MyBatis 集成 -->
             <dependency>

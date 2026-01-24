@@ -7,8 +7,11 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 10MB
+  config:
+    activate:
+      on-profile: dev
   datasource:
-    url: jdbc:mysql://localhost:3306/easymall?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+    url: jdbc:mysql://localhost:3306/smart-mall?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -21,16 +24,16 @@ spring:
       host: 127.0.0.1
       port: 6379
   #elasticsearch相关
-  elasticsearch:
-    uris: http://localhost:9200
-    #username: elastic  # 如果启用了安全认证
-    #password: your_password
+#  elasticsearch:
+#    uris: http://localhost:9200
+#    #username: elastic  # 如果启用了安全认证
+#    #password: your_password
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
 #项目目录
 project:
-  folder: e:/webser/web_app/easymall/
+  folder: e:/webser/web_app/smartMall/
 admin:
   account: admin
   password: admin123
