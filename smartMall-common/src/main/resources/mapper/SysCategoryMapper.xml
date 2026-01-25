@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartMall.mapper.SysCategoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.smartMall.entities.domain.SysCategory">
+            <id property="categoryId" column="category_id" jdbcType="VARCHAR"/>
+            <result property="categoryName" column="category_name" jdbcType="VARCHAR"/>
+            <result property="pCategoryId" column="p_category_id" jdbcType="VARCHAR"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        category_id, category_name, p_category_id, sort
+    </sql>
+
+    <!-- 
+        MyBatis-Plus BaseMapper 已内置以下方法，无需在此定义：
+        - insert(T entity)                    新增
+        - deleteById(Serializable id)         根据ID删除
+        - deleteBatchIds(Collection idList)   批量删除
+        - updateById(T entity)                根据ID更新
+        - selectById(Serializable id)         根据ID查询
+        - selectBatchIds(Collection idList)   批量查询
+        - selectList(Wrapper<T> wrapper)      条件查询列表
+        - selectPage(IPage<T> page, Wrapper<T> wrapper)  分页查询
+        
+        以下仅保留复杂SQL查询，供后续扩展使用
+    -->
+
+    <!-- 批量更新排序值 -->
+    <update id="updateSortBatch" parameterType="java.util.List">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE sys_category
+            SET sort = #{item.sort}
+            WHERE category_id = #{item.categoryId}
+        </foreach>
+    </update>
+
+</mapper>

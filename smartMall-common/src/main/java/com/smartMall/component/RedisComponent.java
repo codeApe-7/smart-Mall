@@ -1,7 +1,7 @@
-package com.smartMall.redis.component;
+package com.smartMall.component;
 
-import com.smartMall.redis.entities.constant.RedisConstant;
-import com.smartMall.redis.utils.RedisUtils;
+import com.smartMall.entities.constant.RedisConstant;
+import com.smartMall.utils.RedisUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 

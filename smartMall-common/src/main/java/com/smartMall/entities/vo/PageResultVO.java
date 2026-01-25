@@ -1,4 +1,4 @@
-package com.smartMall.redis.entities.vo;
+package com.smartMall.entities.vo;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.Data;

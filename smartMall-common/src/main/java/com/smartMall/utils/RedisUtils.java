@@ -1,4 +1,4 @@
-package com.smartMall.redis.utils;
+package com.smartMall.utils;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

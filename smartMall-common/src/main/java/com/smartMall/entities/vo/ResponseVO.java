@@ -1,6 +1,6 @@
-package com.smartMall.redis.entities.vo;
+package com.smartMall.entities.vo;
 
-import com.smartMall.redis.entities.enums.ResponseCodeEnum;
+import com.smartMall.entities.enums.ResponseCodeEnum;
 import lombok.Data;
 
 /**

@@ -1,4 +1,4 @@
-package com.smartMall.redis.entities.config;
+package com.smartMall.entities.config;
 
 import org.springframework.context.annotation.Configuration;
 

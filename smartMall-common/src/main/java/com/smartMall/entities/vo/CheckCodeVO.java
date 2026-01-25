@@ -1,4 +1,4 @@
-package com.smartMall.redis.entities.vo;
+package com.smartMall.entities.vo;
 import lombok.Data;
 
 @Data

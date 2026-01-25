@@ -1,11 +1,12 @@
 package com.smartMall.controller;
 
-import com.smartMall.redis.component.RedisComponent;
-import com.smartMall.redis.entities.config.AppConfig;
-import com.smartMall.redis.entities.dto.LoginDTO;
-import com.smartMall.redis.entities.vo.CheckCodeVO;
-import com.smartMall.redis.entities.vo.ResponseVO;
-import com.smartMall.redis.exception.BusinessException;
+import com.smartMall.component.RedisComponent;
+import com.smartMall.entities.config.AppConfig;
+import com.smartMall.entities.dto.LoginDTO;
+import com.smartMall.entities.vo.CheckCodeVO;
+import com.smartMall.entities.vo.ResponseVO;
+import com.smartMall.exception.BusinessException;
+import com.smartMall.utils.StringTools;
 import com.wf.captcha.ArithmeticCaptcha;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -45,9 +46,10 @@ public class AccountController {
     @PostMapping("/login")
     public ResponseVO<String> login(@RequestBody @Valid LoginDTO loginDTO) {
         String account = loginDTO.getAccount();
+        String password = loginDTO.getPassword();
         try {
-            if (!account.equals(appConfig.getAdminAccount())
-                    || !loginDTO.getPassword().equals(appConfig.getAdminPassword())) {
+            if (!account.equalsIgnoreCase(appConfig.getAdminAccount())
+                    || !password.equalsIgnoreCase(StringTools.encodeByMd5(appConfig.getAdminPassword()))) {
                 throw new BusinessException("账号或密码错误");
             }
             String cachedCode = redisComponent.getCheckCode(loginDTO.getCheckCodeKey());

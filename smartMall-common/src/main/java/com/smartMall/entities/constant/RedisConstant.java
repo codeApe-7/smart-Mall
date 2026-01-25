@@ -1,4 +1,4 @@
-package com.smartMall.redis.entities.constant;
+package com.smartMall.entities.constant;
 
 /**
  * @author <a href="https://github.com/aiaicoder">  小新
