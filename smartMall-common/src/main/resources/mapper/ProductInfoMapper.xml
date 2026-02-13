@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartMall.mapper.ProductInfoMapper">
+
+    <resultMap id="BaseResultMap" type="com.smartMall.entities.domain.ProductInfo">
+            <id property="productId" column="product_id" jdbcType="VARCHAR"/>
+            <result property="productName" column="product_name" jdbcType="VARCHAR"/>
+            <result property="productDesc" column="product_desc" jdbcType="VARCHAR"/>
+            <result property="cover" column="cover" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="categoryId" column="category_id" jdbcType="VARCHAR"/>
+            <result property="pCategoryId" column="p_category_id" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="minPrice" column="min_price" jdbcType="DECIMAL"/>
+            <result property="maxPrice" column="max_price" jdbcType="DECIMAL"/>
+            <result property="totalSale" column="total_sale" jdbcType="INTEGER"/>
+            <result property="commendType" column="commend_type" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        product_id,product_name,product_desc,
+        cover,create_time,category_id,
+        p_category_id,status,min_price,
+        max_price,total_sale,commend_type
+    </sql>
+</mapper>

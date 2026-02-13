@@ -45,6 +45,7 @@
         <redisson.version>4.0.0</redisson.version>
         <alipay.version>4.40.576.ALL</alipay.version>
         <elasticsearch.version>9.2.1</elasticsearch.version>
+        <hutool.version>5.8.34</hutool.version>
     </properties>
 
     <dependencyManagement>
@@ -184,6 +185,13 @@
                 <groupId>com.alipay.sdk</groupId>
                 <artifactId>alipay-sdk-java</artifactId>
                 <version>${alipay.version}</version>
+            </dependency>
+
+            <!-- Hutool 工具包 -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

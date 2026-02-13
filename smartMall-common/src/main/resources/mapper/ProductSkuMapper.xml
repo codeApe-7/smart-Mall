@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartMall.mapper.ProductSkuMapper">
+
+    <resultMap id="BaseResultMap" type="com.smartMall.entities.domain.ProductSku">
+            <id property="productId" column="product_id" jdbcType="VARCHAR"/>
+            <id property="propertyValueIdHash" column="property_value_id_hash" jdbcType="VARCHAR"/>
+            <result property="propertyValueIds" column="property_value_ids" jdbcType="VARCHAR"/>
+            <result property="price" column="price" jdbcType="DECIMAL"/>
+            <result property="stock" column="stock" jdbcType="INTEGER"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        product_id,property_value_id_hash,property_value_ids,
+        price,stock,sort
+    </sql>
+</mapper>

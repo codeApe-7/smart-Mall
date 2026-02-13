@@ -73,21 +73,6 @@ public class SysCategoryController {
     }
 
     /**
-     * 获取所有分类列表（不分页，支持树形结构）
-     *
-     * @param tree 是否返回树形结构，默认false
-     * @return 分类列表
-     */
-    @GetMapping("/listAll")
-    public ResponseVO<List<SysCategoryVO>> listAll(
-            @RequestParam(required = false, defaultValue = "false") Boolean tree) {
-        SysCategoryQueryDTO queryDTO = new SysCategoryQueryDTO();
-        queryDTO.setTree(tree);
-        List<SysCategoryVO> voList = sysCategoryService.queryList(queryDTO);
-        return ResponseVO.success(voList);
-    }
-
-    /**
      * 根据ID获取分类详情
      *
      * @param categoryId 分类ID
@@ -169,21 +154,6 @@ public class SysCategoryController {
     public ResponseVO<Void> deleteBatch(@RequestBody List<String> categoryIds) {
         sysCategoryService.deleteCategoryBatch(categoryIds);
         return ResponseVO.success();
-    }
-
-    /**
-     * 根据父级ID获取子分类列表
-     *
-     * @param pCategoryId 父分类ID
-     * @return 子分类列表
-     */
-    @GetMapping("/children/{pCategoryId}")
-    public ResponseVO<List<SysCategoryVO>> getChildren(@PathVariable String pCategoryId) {
-        LambdaQueryWrapper<SysCategory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysCategory::getPCategoryId, pCategoryId)
-                .orderByAsc(SysCategory::getSort);
-        List<SysCategory> list = sysCategoryService.list(queryWrapper);
-        return ResponseVO.success(sysCategoryService.convertToVOList(list));
     }
 
     /**

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartMall.mapper.ProductPropertyValueMapper">
+
+    <resultMap id="BaseResultMap" type="com.smartMall.entities.domain.ProductPropertyValue">
+            <id property="productId" column="product_id" jdbcType="VARCHAR"/>
+            <id property="propertyValueId" column="property_value_id" jdbcType="VARCHAR"/>
+            <result property="propertyId" column="property_id" jdbcType="VARCHAR"/>
+            <result property="propertyName" column="property_name" jdbcType="VARCHAR"/>
+            <result property="propertySort" column="property_sort" jdbcType="INTEGER"/>
+            <result property="coverType" column="cover_type" jdbcType="TINYINT"/>
+            <result property="propertyValue" column="property_value" jdbcType="VARCHAR"/>
+            <result property="propertyRemark" column="property_remark" jdbcType="VARCHAR"/>
+            <result property="sort" column="sort" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        product_id,property_value_id,property_id,
+        property_name,property_sort,cover_type,
+        property_value,property_remark,sort
+    </sql>
+</mapper>
