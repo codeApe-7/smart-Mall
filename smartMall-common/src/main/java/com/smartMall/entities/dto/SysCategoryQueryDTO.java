@@ -30,4 +30,9 @@ public class SysCategoryQueryDTO extends PageQueryDTO {
      * 是否返回树形结构（默认false）
      */
     private Boolean tree = false;
+
+    /**
+     * 是否查询分类下的商品属性（默认false）
+     */
+    private Boolean withProperty = false;
 }

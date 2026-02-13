@@ -2,12 +2,16 @@ package com.smartMall.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.smartMall.entities.domain.SysCategory;
+import com.smartMall.entities.domain.SysProductProperty;
 import com.smartMall.entities.dto.SysCategoryQueryDTO;
 import com.smartMall.entities.dto.SysCategorySaveDTO;
+import com.smartMall.entities.dto.SysProductPropertySaveDTO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.entities.vo.SysCategoryVO;
+import com.smartMall.entities.vo.SysProductPropertyVO;
 import com.smartMall.service.SysCategoryService;
+import com.smartMall.service.SysProductPropertyService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -29,22 +33,43 @@ public class SysCategoryController {
     @Resource
     private SysCategoryService sysCategoryService;
 
+    @Resource
+    private SysProductPropertyService sysProductPropertyService;
+
     /**
      * 分页查询分类列表
      *
-     * @param queryDTO 查询参数（包含tree参数控制是否返回树形结构）
+     * @param queryDTO 查询参数（包含tree参数控制是否返回树形结构，withProperty控制是否查询属性）
      * @return 分页结果或树形列表
      */
-    @GetMapping("/list")
-    public ResponseVO<?> list(SysCategoryQueryDTO queryDTO) {
+    @PostMapping("/list")
+    public ResponseVO<?> list(@RequestBody SysCategoryQueryDTO queryDTO) {
         // 如果需要树形结构，返回完整树形列表（不分页）
         if (Boolean.TRUE.equals(queryDTO.getTree())) {
             List<SysCategoryVO> treeList = sysCategoryService.queryList(queryDTO);
+            fillProperties(treeList, queryDTO.getWithProperty());
             return ResponseVO.success(treeList);
         }
         // 分页查询
         PageResultVO<SysCategoryVO> pageResult = sysCategoryService.queryPage(queryDTO);
+        fillProperties(pageResult.getRecords(), queryDTO.getWithProperty());
         return ResponseVO.success(pageResult);
+    }
+
+    /**
+     * 为分类VO列表填充商品属性（递归处理子分类）
+     */
+    private void fillProperties(List<SysCategoryVO> voList, Boolean withProperty) {
+        if (!Boolean.TRUE.equals(withProperty) || voList == null || voList.isEmpty()) {
+            return;
+        }
+        for (SysCategoryVO vo : voList) {
+            vo.setProperties(sysProductPropertyService.listByCategoryId(vo.getCategoryId()));
+            // 递归填充子分类的属性
+            if (vo.getChildren() != null && !vo.getChildren().isEmpty()) {
+                fillProperties(vo.getChildren(), withProperty);
+            }
+        }
     }
 
     /**
@@ -135,33 +160,6 @@ public class SysCategoryController {
     }
 
     /**
-     * 批量新增或更新分类（根据ID判断：有ID则更新，无ID则新增，新增时自动设置排序值）
-     *
-     * @param categoryList 分类列表
-     * @return 操作结果
-     */
-    @PostMapping("/saveOrUpdateBatch")
-    public ResponseVO<Void> saveOrUpdateBatch(@RequestBody @Valid List<SysCategory> categoryList) {
-        // 分离新增和更新的数据
-        List<SysCategory> toAdd = categoryList.stream()
-                .filter(c -> StringTools.isEmpty(c.getCategoryId()))
-                .collect(java.util.stream.Collectors.toList());
-        List<SysCategory> toUpdate = categoryList.stream()
-                .filter(c -> StringTools.isNotEmpty(c.getCategoryId()))
-                .collect(java.util.stream.Collectors.toList());
-
-        // 新增的使用addCategoryBatch（自动设置排序值）
-        if (!toAdd.isEmpty()) {
-            sysCategoryService.addCategoryBatch(toAdd);
-        }
-        // 更新的使用updateBatchById
-        if (!toUpdate.isEmpty()) {
-            sysCategoryService.updateBatchById(toUpdate);
-        }
-        return ResponseVO.success();
-    }
-
-    /**
      * 批量删除分类（级联删除所有子分类）
      *
      * @param categoryIds 分类ID列表
@@ -224,6 +222,56 @@ public class SysCategoryController {
     @PostMapping("/changeSortByList")
     public ResponseVO<Void> changeSortByList(@RequestBody List<String> categoryIds) {
         sysCategoryService.changeSortByList(categoryIds);
+        return ResponseVO.success();
+    }
+
+    // ==================== 商品属性管理 ====================
+
+    /**
+     * 新增属性（自动设置排序值）
+     *
+     * @param saveDTO 属性保存DTO
+     * @return 操作结果
+     */
+    @PostMapping("/property/add")
+    public ResponseVO<Void> addProperty(@RequestBody @Valid SysProductPropertySaveDTO saveDTO) {
+        sysProductPropertyService.addProperty(saveDTO);
+        return ResponseVO.success();
+    }
+
+    /**
+     * 更新属性
+     *
+     * @param property 属性实体
+     * @return 操作结果
+     */
+    @PostMapping("/property/update")
+    public ResponseVO<Void> updateProperty(@RequestBody @Valid SysProductProperty property) {
+        sysProductPropertyService.updateProperty(property);
+        return ResponseVO.success();
+    }
+
+    /**
+     * 删除属性
+     *
+     * @param propertyId 属性ID
+     * @return 操作结果
+     */
+    @PostMapping("/property/delete/{propertyId}")
+    public ResponseVO<Void> deleteProperty(@PathVariable String propertyId) {
+        sysProductPropertyService.deleteProperty(propertyId);
+        return ResponseVO.success();
+    }
+
+    /**
+     * 批量删除属性
+     *
+     * @param propertyIds 属性ID列表
+     * @return 操作结果
+     */
+    @PostMapping("/property/deleteBatch")
+    public ResponseVO<Void> deletePropertyBatch(@RequestBody List<String> propertyIds) {
+        sysProductPropertyService.deleteBatch(propertyIds);
         return ResponseVO.success();
     }
 }

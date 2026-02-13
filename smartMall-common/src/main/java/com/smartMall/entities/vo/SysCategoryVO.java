@@ -42,4 +42,9 @@ public class SysCategoryVO implements Serializable {
      * 子分类列表（树形结构时使用）
      */
     private List<SysCategoryVO> children;
+
+    /**
+     * 商品属性列表（withProperty=true时填充）
+     */
+    private List<SysProductPropertyVO> properties;
 }

@@ -8,6 +8,7 @@ import lombok.Data;
 
 /**
  * 商品属性表
+ * @author 15712
  * @TableName sys_product_property
  */
 @TableName(value ="sys_product_property")
