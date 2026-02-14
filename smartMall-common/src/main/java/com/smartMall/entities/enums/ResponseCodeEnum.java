@@ -22,7 +22,8 @@ public enum ResponseCodeEnum {
     RESOURCE_CONFLICT(409, "error", "资源冲突"),
     OPERATION_FAILED(501, "error", "操作失败"),
     USER_NOT_EXIST(800, "error", "用户不存在"),
-    TOKEN_EXPIRED(803, "error", "令牌过期");
+    TOKEN_EXPIRED(803, "error", "令牌过期"),
+    DATA_NOT_EXIST(405, "error", "数据不存在");
 
     private final Integer code;
     private final String status;

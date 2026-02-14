@@ -27,9 +27,9 @@ public class ProductPropertyValueVO implements Serializable {
     private String propertyName;
 
     /**
-     * 属性排序
+     * 属性封面
      */
-    private Integer propertySort;
+    private String propertyCover;
 
     /**
      * 0:无需封面 1:需封面
@@ -52,9 +52,4 @@ public class ProductPropertyValueVO implements Serializable {
      * 备注
      */
     private String propertyRemark;
-
-    /**
-     * 属性值排序
-     */
-    private Integer sort;
 }

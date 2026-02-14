@@ -1,5 +1,7 @@
 package com.smartMall.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,7 +12,9 @@ import com.smartMall.entities.domain.SysCategory;
 import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.ProductSaveDTO;
 import com.smartMall.entities.enums.ProductStatusEnum;
+import com.smartMall.entities.enums.ResponseCodeEnum;
 import com.smartMall.entities.vo.*;
+import com.smartMall.exception.BusinessException;
 import com.smartMall.mapper.ProductInfoMapper;
 import com.smartMall.service.ProductInfoService;
 import com.smartMall.service.ProductPropertyValueService;
@@ -69,11 +73,16 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
             return PageResultVO.empty(queryDTO.getPageNo(), queryDTO.getPageSize());
         }
 
-        // 3. 批量查询分类名称
-        Set<String> categoryIds = productList.stream()
-                .map(ProductInfo::getCategoryId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        // 3. 批量查询分类名称（包括父分类和子分类）
+        Set<String> categoryIds = new HashSet<>();
+        productList.forEach(p -> {
+            if (p.getCategoryId() != null) {
+                categoryIds.add(p.getCategoryId());
+            }
+            if (p.getPCategoryId() != null) {
+                categoryIds.add(p.getPCategoryId());
+            }
+        });
         Map<String, String> categoryNameMap = new HashMap<>();
         if (!categoryIds.isEmpty()) {
             List<SysCategory> categories = sysCategoryService.listByIds(categoryIds);
@@ -95,7 +104,10 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         List<ProductInfoListVO> voList = productList.stream().map(product -> {
             ProductInfoListVO vo = new ProductInfoListVO();
             BeanUtils.copyProperties(product, vo);
-            vo.setCategoryName(finalCategoryNameMap.getOrDefault(product.getCategoryId(), ""));
+            // 拼接分类名称：父分类名/子分类名
+            String pName = finalCategoryNameMap.getOrDefault(product.getPCategoryId(), "");
+            String cName = finalCategoryNameMap.getOrDefault(product.getCategoryId(), "");
+            vo.setCategoryName(pName + "/" + cName);
 
             List<ProductSku> skus = skuGroupMap.getOrDefault(product.getProductId(), List.of());
             vo.setSkuCount(skus.size());
@@ -185,6 +197,61 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         productSkuService.remove(
                 new LambdaQueryWrapper<ProductSku>()
                         .eq(ProductSku::getProductId, productId));
+    }
+
+    @Override
+    public ProductInfoDetailVo getProductDetail(String productId) {
+        ProductInfo productInfo = this.getById(productId);
+        if (productInfo == null){
+           throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "商品信息不存在");
+        }
+        // 1. 查询商品属性值
+        LambdaQueryWrapper<ProductPropertyValue> propertyValueQuery = new LambdaQueryWrapper<>();
+        propertyValueQuery.eq(ProductPropertyValue::getProductId, productId)
+                .orderByAsc(ProductPropertyValue::getPropertySort);
+
+
+        List<ProductPropertyValue> propertyValueList = productPropertyValueService.list(propertyValueQuery);
+
+        // 3. 构建 ProductPropertyVO 列表
+        List<ProductPropertyVO> productPropertyList = new ArrayList<>();
+        Map<String, ProductPropertyVO> propertyVoMap = new HashMap<>();
+
+        for (ProductPropertyValue productPropertyValue : propertyValueList) {
+            ProductPropertyVO productPropertyVO = propertyVoMap.get(productPropertyValue.getPropertyId());
+            ProductPropertyValueVO propertyValueVo = new ProductPropertyValueVO();
+            propertyValueVo.setPropertyValueId(productPropertyValue.getPropertyValueId());
+            propertyValueVo.setPropertyCover(productPropertyValue.getPropertyCover());
+            propertyValueVo.setPropertyValue(productPropertyValue.getPropertyValue());
+            if (productPropertyVO == null){
+                productPropertyVO = new ProductPropertyVO();
+                productPropertyVO.setPropertyId(productPropertyValue.getPropertyId());
+                productPropertyVO.setPropertyName(productPropertyValue.getPropertyName());
+                productPropertyVO.setCoverType(productPropertyValue.getCoverType());
+                productPropertyVO.setPropertySort(productPropertyValue.getPropertySort());
+                propertyVoMap.put(productPropertyValue.getPropertyId(), productPropertyVO);
+                List<ProductPropertyValueVO> productPropertyValueVOS = new ArrayList<>();
+                productPropertyValueVOS.add(propertyValueVo);
+                productPropertyVO.setPropertyValueList(productPropertyValueVOS);
+                productPropertyList.add(productPropertyVO);
+            }else {
+                productPropertyVO.getPropertyValueList().add(propertyValueVo);
+            }
+        }
+        //查询sku信息
+        LambdaQueryWrapper<ProductSku> productSkuLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        productSkuLambdaQueryWrapper.eq(ProductSku::getProductId, productId)
+                .orderByAsc(ProductSku::getSort);
+        List<ProductSkuVO> productSkuVOS = new ArrayList<>();
+        List<ProductSku> skuList = productSkuService.list(productSkuLambdaQueryWrapper);
+        if (CollectionUtil.isNotEmpty(skuList)){
+            productSkuVOS = BeanUtil.copyToList(skuList, ProductSkuVO.class);
+        }
+        ProductInfoDetailVo productInfoDetailVO = new ProductInfoDetailVo();
+        productInfoDetailVO.setProductInfo(productInfo);
+        productInfoDetailVO.setProductPropertyList(productPropertyList);
+        productInfoDetailVO.setSkuList(productSkuVOS);
+        return productInfoDetailVO;
     }
 
     /**

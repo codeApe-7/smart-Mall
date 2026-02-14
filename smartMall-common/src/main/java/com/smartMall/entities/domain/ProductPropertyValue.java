@@ -62,6 +62,9 @@ public class ProductPropertyValue implements Serializable {
     @TableField(value = "property_remark")
     private String propertyRemark;
 
+    @TableField(value = "property_cover")
+    private String propertyCover;
+
     /**
      * 属性值排序
      */

@@ -4,6 +4,7 @@ import com.smartMall.entities.domain.ProductInfo;
 import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.ProductSaveDTO;
 import com.smartMall.entities.vo.PageResultVO;
+import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -35,4 +36,12 @@ public interface ProductInfoService extends IService<ProductInfo> {
      * @param productId 商品ID
      */
     void deleteProduct(String productId);
+
+    /**
+     * 查询商品详情（含属性值和SKU）
+     *
+     * @param productId 商品ID
+     * @return 商品详情VO
+     */
+    ProductInfoDetailVo getProductDetail(String productId);
 }
