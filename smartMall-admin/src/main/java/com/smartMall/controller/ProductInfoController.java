@@ -3,6 +3,7 @@ package com.smartMall.controller;
 import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.ProductSaveDTO;
 import com.smartMall.entities.vo.PageResultVO;
+import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.service.ProductInfoService;
@@ -32,6 +33,11 @@ public class ProductInfoController {
     @PostMapping("/loadProductList")
     public ResponseVO<PageResultVO<ProductInfoListVO>> loadProductList(@RequestBody ProductQueryDTO productQueryDTO) {
         return ResponseVO.success(productInfoService.loadProductList(productQueryDTO));
+    }
+
+    @GetMapping("/getProductDetail/{productId}")
+    public ResponseVO<ProductInfoDetailVo> getProductDetail(@PathVariable String productId) {
+        return ResponseVO.success(productInfoService.getProductDetail(productId));
     }
 
     /**
