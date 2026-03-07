@@ -74,3 +74,40 @@ CREATE TABLE `shopping_cart` (
                                  UNIQUE KEY `uk_user_product_sku` (`user_id`,`product_id`,`property_value_id_hash`) USING BTREE,
                                  KEY `idx_user_id` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='购物车';
+
+
+CREATE TABLE `order_info` (
+                              `order_id` varchar(32) NOT NULL COMMENT '订单ID',
+                              `order_no` varchar(32) NOT NULL COMMENT '订单号',
+                              `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+                              `order_status` int(11) NOT NULL DEFAULT '0' COMMENT '0:待支付 10:已支付 20:已取消 30:已完成',
+                              `total_amount` decimal(10,2) NOT NULL COMMENT '订单总金额',
+                              `total_quantity` int(11) NOT NULL COMMENT '商品总数量',
+                              `receiver_name` varchar(50) NOT NULL COMMENT '收货人',
+                              `receiver_phone` varchar(30) NOT NULL COMMENT '收货电话',
+                              `receiver_address` varchar(255) NOT NULL COMMENT '收货地址',
+                              `order_remark` varchar(255) DEFAULT NULL COMMENT '订单备注',
+                              `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+                              `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+                              `cancel_time` datetime DEFAULT NULL COMMENT '取消时间',
+                              PRIMARY KEY (`order_id`) USING BTREE,
+                              UNIQUE KEY `uk_order_no` (`order_no`) USING BTREE,
+                              KEY `idx_user_id_status` (`user_id`,`order_status`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='订单主表';
+
+CREATE TABLE `order_item` (
+                              `item_id` varchar(32) NOT NULL COMMENT '订单项ID',
+                              `order_id` varchar(32) NOT NULL COMMENT '订单ID',
+                              `product_id` varchar(32) NOT NULL COMMENT '商品ID',
+                              `product_name` varchar(200) DEFAULT NULL COMMENT '商品名称',
+                              `product_cover` varchar(500) DEFAULT NULL COMMENT '商品封面',
+                              `property_value_id_hash` varchar(32) NOT NULL COMMENT 'SKU哈希',
+                              `property_value_ids` varchar(500) DEFAULT NULL COMMENT 'SKU属性值组合',
+                              `sku_property_text` varchar(255) DEFAULT NULL COMMENT 'SKU属性文本',
+                              `price` decimal(10,2) NOT NULL COMMENT '成交单价',
+                              `quantity` int(11) NOT NULL COMMENT '购买数量',
+                              `total_amount` decimal(10,2) NOT NULL COMMENT '明细总金额',
+                              `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+                              PRIMARY KEY (`item_id`) USING BTREE,
+                              KEY `idx_order_id` (`order_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='订单明细';
