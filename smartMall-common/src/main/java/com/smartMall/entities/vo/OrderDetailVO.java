@@ -45,6 +45,9 @@ public class OrderDetailVO implements Serializable {
     private Date updateTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date payTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date cancelTime;
 
     private List<OrderItemVO> items;

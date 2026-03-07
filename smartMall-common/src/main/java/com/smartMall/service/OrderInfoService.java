@@ -12,6 +12,8 @@ import com.smartMall.entities.vo.OrderInfoListVO;
 import com.smartMall.entities.vo.OrderPreviewVO;
 import com.smartMall.entities.vo.PageResultVO;
 
+import java.util.Date;
+
 /**
  * 订单主表 Service。
  */
@@ -26,4 +28,8 @@ public interface OrderInfoService extends IService<OrderInfo> {
     OrderDetailVO getOrderDetail(String userId, String orderId);
 
     void cancelOrder(OrderCancelDTO dto);
+
+    OrderInfo getUserOrder(String userId, String orderId);
+
+    void markOrderPaid(String orderId, Date payTime);
 }

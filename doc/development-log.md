@@ -1,5 +1,58 @@
 # SmartMall 开发日志
 
+## 2026-03-07 功能点：用户端支付下单与支付回调基础能力
+
+### 本次目标
+- 衔接已创建的待支付订单，补齐用户端支付下单能力。
+- 提供支付回调入口，并推动订单状态从待支付流转到已支付。
+- 为后续退款、确认收货、评价等订单后续链路打基础。
+
+### 本次实现
+- 在 `smartMall-common` 新增支付领域模型与枚举：
+  - `PaymentInfo`
+  - `PaymentStatusEnum`
+  - `PaymentChannelEnum`
+- 新增支付 DTO / VO：
+  - `PaymentSubmitDTO`
+  - `PaymentCallbackDTO`
+  - `PaymentSubmitVO`
+- 新增支付 Mapper / Service / ServiceImpl：
+  - `PaymentInfoMapper`
+  - `PaymentInfoService`
+  - `PaymentInfoServiceImpl`
+- 在 `smartMall-web` 新增 `MallPaymentController`，提供接口：
+  - `POST /api/payment/submit`
+  - `POST /api/payment/callback`
+- 支付能力已支持：
+  - 针对待支付订单创建支付流水。
+  - 重复发起支付时复用未完成的支付单。
+  - 支付回调按状态处理成功、失败、关闭三类结果。
+  - 成功回调后幂等更新支付流水，并把订单推进到“已支付”。
+  - 返回模拟回调示例，方便当前阶段联调与手工验证。
+- 订单领域同步补充 `payTime` 字段，并在订单详情、订单列表中可回显支付时间。
+- 在 `doc/sql/smart-mall.sql` 追加：
+  - `order_info.pay_time` 字段说明
+  - `payment_info` 表结构说明
+
+### 验证记录
+- 本次会执行本地 Maven 校验。
+- Maven 继续使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64`。
+- 若需要临时测试文件进行支付链路验证，仅本地使用，验证后删除，不纳入提交。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 继续实现退款申请与退款状态流转。
+- 补确认收货、订单完成、商品评价。
+- 再衔接智能购物模式中的对话式订单操作。
+
+### 提交记录
+- Git Commit: 本次功能点提交为“完成功能点：用户端支付下单与支付回调基础能力”。
+
 ## 2026-03-07 功能点：用户端订单创建与结算基础能力
 
 ### 本次目标
@@ -31,7 +84,7 @@
   - `OrderItemService`
   - `OrderInfoServiceImpl`
   - `OrderItemServiceImpl`
-- 在 `smartMall-web` 新增 `MallOrderController`，提供以下接口：
+- 在 `smartMall-web` 新增 `MallOrderController`，提供接口：
   - `POST /api/order/preview`
   - `POST /api/order/create`
   - `POST /api/order/list`
@@ -47,7 +100,7 @@
   - `order_info`
   - `order_item`
 
-### 测试记录
+### 验证记录
 - 执行命令：
   - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
 - 环境说明：
@@ -82,7 +135,7 @@
 ### 本次实现
 - 新增购物车表结构说明：`shopping_cart`。
 - 在 `smartMall-common` 新增购物车实体、DTO、VO、Mapper、Service、ServiceImpl。
-- 在 `smartMall-web` 新增 `MallCartController`，提供以下接口：
+- 在 `smartMall-web` 新增 `MallCartController`，提供接口：
   - `GET /api/cart/list?userId=xxx`
   - `POST /api/cart/add`
   - `POST /api/cart/updateQuantity`
@@ -95,7 +148,7 @@
   - 已下架或库存不足商品在列表中标记为 `available=false`。
 - 新增购物车服务层与控制器层测试。
 
-### 测试记录
+### 验证记录
 - 执行命令：
   - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
 - 环境说明：
@@ -137,7 +190,7 @@
 - 在父 `pom.xml` 增加 Lombok 注解处理编译配置。
 - 为 `smartMall-common`、`smartMall-web` 增加测试依赖，并补充对应测试。
 
-### 测试记录
+### 验证记录
 - 执行命令：
   - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
 - 测试结果：通过。

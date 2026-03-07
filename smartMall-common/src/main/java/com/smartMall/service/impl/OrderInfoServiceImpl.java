@@ -40,7 +40,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.smartMall.entities.constant.Constants.LENGTH_32;
 
@@ -160,6 +159,35 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         orderInfo.setUpdateTime(now);
         this.updateById(orderInfo);
         log.info("cancel order success, userId={}, orderId={}", dto.getUserId(), dto.getOrderId());
+    }
+
+    @Override
+    public OrderInfo getUserOrder(String userId, String orderId) {
+        return getOwnedOrder(userId, orderId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markOrderPaid(String orderId, Date payTime) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (OrderStatusEnum.PAID.getStatus().equals(orderInfo.getOrderStatus())) {
+            return;
+        }
+        if (!OrderStatusEnum.PENDING_PAYMENT.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support payment");
+        }
+        Date finalPayTime = payTime == null ? new Date() : payTime;
+        orderInfo.setOrderStatus(OrderStatusEnum.PAID.getStatus());
+        orderInfo.setPayTime(finalPayTime);
+        orderInfo.setUpdateTime(finalPayTime);
+        this.updateById(orderInfo);
+        log.info("mark order paid, orderId={}, payTime={}", orderId, finalPayTime);
     }
 
     private List<ShoppingCartItemVO> loadSelectedCartItems(String userId, List<String> cartIds, boolean requireAvailable) {

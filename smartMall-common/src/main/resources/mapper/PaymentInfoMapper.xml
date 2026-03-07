@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartMall.mapper.PaymentInfoMapper">
+
+    <resultMap id="BaseResultMap" type="com.smartMall.entities.domain.PaymentInfo">
+        <id property="paymentId" column="payment_id" jdbcType="VARCHAR"/>
+        <result property="paymentNo" column="payment_no" jdbcType="VARCHAR"/>
+        <result property="orderId" column="order_id" jdbcType="VARCHAR"/>
+        <result property="orderNo" column="order_no" jdbcType="VARCHAR"/>
+        <result property="userId" column="user_id" jdbcType="VARCHAR"/>
+        <result property="payChannel" column="pay_channel" jdbcType="VARCHAR"/>
+        <result property="payStatus" column="pay_status" jdbcType="INTEGER"/>
+        <result property="payAmount" column="pay_amount" jdbcType="DECIMAL"/>
+        <result property="gatewayTradeNo" column="gateway_trade_no" jdbcType="VARCHAR"/>
+        <result property="callbackContent" column="callback_content" jdbcType="VARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+        <result property="payTime" column="pay_time" jdbcType="TIMESTAMP"/>
+        <result property="callbackTime" column="callback_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        payment_id,payment_no,order_id,order_no,user_id,
+        pay_channel,pay_status,pay_amount,gateway_trade_no,callback_content,
+        create_time,update_time,pay_time,callback_time
+    </sql>
+</mapper>

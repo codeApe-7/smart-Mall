@@ -17,12 +17,13 @@
         <result property="orderRemark" column="order_remark" jdbcType="VARCHAR"/>
         <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
         <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+        <result property="payTime" column="pay_time" jdbcType="TIMESTAMP"/>
         <result property="cancelTime" column="cancel_time" jdbcType="TIMESTAMP"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         order_id,order_no,user_id,order_status,total_amount,
         total_quantity,receiver_name,receiver_phone,receiver_address,
-        order_remark,create_time,update_time,cancel_time
+        order_remark,create_time,update_time,pay_time,cancel_time
     </sql>
 </mapper>

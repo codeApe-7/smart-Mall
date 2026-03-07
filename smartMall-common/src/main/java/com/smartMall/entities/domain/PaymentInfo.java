@@ -10,13 +10,19 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 /**
- * 订单主表。
+ * Payment record.
  */
 @Data
-@TableName("order_info")
-public class OrderInfo implements Serializable {
+@TableName("payment_info")
+public class PaymentInfo implements Serializable {
 
-    @TableId("order_id")
+    @TableId("payment_id")
+    private String paymentId;
+
+    @TableField("payment_no")
+    private String paymentNo;
+
+    @TableField("order_id")
     private String orderId;
 
     @TableField("order_no")
@@ -25,26 +31,20 @@ public class OrderInfo implements Serializable {
     @TableField("user_id")
     private String userId;
 
-    @TableField("order_status")
-    private Integer orderStatus;
+    @TableField("pay_channel")
+    private String payChannel;
 
-    @TableField("total_amount")
-    private BigDecimal totalAmount;
+    @TableField("pay_status")
+    private Integer payStatus;
 
-    @TableField("total_quantity")
-    private Integer totalQuantity;
+    @TableField("pay_amount")
+    private BigDecimal payAmount;
 
-    @TableField("receiver_name")
-    private String receiverName;
+    @TableField("gateway_trade_no")
+    private String gatewayTradeNo;
 
-    @TableField("receiver_phone")
-    private String receiverPhone;
-
-    @TableField("receiver_address")
-    private String receiverAddress;
-
-    @TableField("order_remark")
-    private String orderRemark;
+    @TableField("callback_content")
+    private String callbackContent;
 
     @TableField("create_time")
     private Date createTime;
@@ -55,8 +55,8 @@ public class OrderInfo implements Serializable {
     @TableField("pay_time")
     private Date payTime;
 
-    @TableField("cancel_time")
-    private Date cancelTime;
+    @TableField("callback_time")
+    private Date callbackTime;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
