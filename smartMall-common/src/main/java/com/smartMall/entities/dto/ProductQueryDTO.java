@@ -29,4 +29,9 @@ public class ProductQueryDTO extends PageQueryDTO {
      * 是否推荐（默认false）
      */
     private Integer commendType;
+
+    /**
+     * 商品状态
+     */
+    private Integer status;
 }

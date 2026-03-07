@@ -13,7 +13,13 @@ import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.ProductSaveDTO;
 import com.smartMall.entities.enums.ProductStatusEnum;
 import com.smartMall.entities.enums.ResponseCodeEnum;
-import com.smartMall.entities.vo.*;
+import com.smartMall.entities.vo.PageResultVO;
+import com.smartMall.entities.vo.ProductInfoDetailVo;
+import com.smartMall.entities.vo.ProductInfoListVO;
+import com.smartMall.entities.vo.ProductInfoVO;
+import com.smartMall.entities.vo.ProductPropertyVO;
+import com.smartMall.entities.vo.ProductPropertyValueVO;
+import com.smartMall.entities.vo.ProductSkuVO;
 import com.smartMall.exception.BusinessException;
 import com.smartMall.mapper.ProductInfoMapper;
 import com.smartMall.service.ProductInfoService;
@@ -22,11 +28,20 @@ import com.smartMall.service.ProductSkuService;
 import com.smartMall.service.SysCategoryService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.smartMall.entities.constant.Constants.LENGTH_32;
@@ -37,8 +52,13 @@ import static com.smartMall.entities.constant.Constants.LENGTH_32;
  * @createDate 2026-02-13 15:52:46
  */
 @Service
+@Slf4j
 public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, ProductInfo>
         implements ProductInfoService {
+
+    private static final int DEFAULT_RECOMMEND_LIMIT = 6;
+    private static final int MAX_RECOMMEND_LIMIT = 20;
+    private static final int RECOMMEND_PRODUCT = 1;
 
     @Resource
     private ProductPropertyValueService productPropertyValueService;
@@ -51,79 +71,88 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
 
     @Override
     public PageResultVO<ProductInfoListVO> loadProductList(ProductQueryDTO queryDTO) {
-        // 1. 构建查询条件
+        ProductQueryDTO safeQuery = queryDTO == null ? new ProductQueryDTO() : queryDTO;
         LambdaQueryWrapper<ProductInfo> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
-                .like(StringTools.isNotEmpty(queryDTO.getProductName()),
-                        ProductInfo::getProductName, queryDTO.getProductName())
-                .and(StringTools.isNotEmpty(queryDTO.getCategoryIdOrPCategoryId()),
-                        w -> w.eq(ProductInfo::getCategoryId, queryDTO.getCategoryIdOrPCategoryId())
+                .like(StringTools.isNotEmpty(safeQuery.getProductName()),
+                        ProductInfo::getProductName, safeQuery.getProductName())
+                .and(StringTools.isNotEmpty(safeQuery.getCategoryIdOrPCategoryId()),
+                        wrapper -> wrapper.eq(ProductInfo::getCategoryId, safeQuery.getCategoryIdOrPCategoryId())
                                 .or()
-                                .eq(ProductInfo::getPCategoryId, queryDTO.getCategoryIdOrPCategoryId()))
-                .eq(queryDTO.getCommendType() != null,
-                        ProductInfo::getCommendType, queryDTO.getCommendType())
+                                .eq(ProductInfo::getPCategoryId, safeQuery.getCategoryIdOrPCategoryId()))
+                .eq(safeQuery.getCommendType() != null,
+                        ProductInfo::getCommendType, safeQuery.getCommendType())
+                .eq(safeQuery.getStatus() != null,
+                        ProductInfo::getStatus, safeQuery.getStatus())
                 .orderByDesc(ProductInfo::getCreateTime);
 
-        // 2. 分页查询
-        Page<ProductInfo> page = new Page<>(queryDTO.getPageNo(), queryDTO.getPageSize());
+        Page<ProductInfo> page = new Page<>(safeQuery.getPageNo(), safeQuery.getPageSize());
         this.page(page, queryWrapper);
 
         List<ProductInfo> productList = page.getRecords();
         if (productList.isEmpty()) {
-            return PageResultVO.empty(queryDTO.getPageNo(), queryDTO.getPageSize());
+            return PageResultVO.empty(safeQuery.getPageNo(), safeQuery.getPageSize());
         }
 
-        // 3. 批量查询分类名称（包括父分类和子分类）
         Set<String> categoryIds = new HashSet<>();
-        productList.forEach(p -> {
-            if (p.getCategoryId() != null) {
-                categoryIds.add(p.getCategoryId());
+        productList.forEach(product -> {
+            if (product.getCategoryId() != null) {
+                categoryIds.add(product.getCategoryId());
             }
-            if (p.getPCategoryId() != null) {
-                categoryIds.add(p.getPCategoryId());
+            if (product.getPCategoryId() != null) {
+                categoryIds.add(product.getPCategoryId());
             }
         });
+
         Map<String, String> categoryNameMap = new HashMap<>();
         if (!categoryIds.isEmpty()) {
             List<SysCategory> categories = sysCategoryService.listByIds(categoryIds);
-            categoryNameMap = categories.stream()
-                    .collect(Collectors.toMap(SysCategory::getCategoryId, SysCategory::getCategoryName, (a, b) -> a));
+            categoryNameMap = categories.stream().collect(Collectors.toMap(
+                    SysCategory::getCategoryId,
+                    SysCategory::getCategoryName,
+                    (left, right) -> left));
         }
 
-        // 4. 批量查询 SKU（按 productId 分组）
         List<String> productIds = productList.stream()
                 .map(ProductInfo::getProductId)
-                .collect(Collectors.toList());
+                .toList();
         List<ProductSku> allSkus = productSkuService.list(
                 new LambdaQueryWrapper<ProductSku>().in(ProductSku::getProductId, productIds));
         Map<String, List<ProductSku>> skuGroupMap = allSkus.stream()
                 .collect(Collectors.groupingBy(ProductSku::getProductId));
 
-        // 5. 组装 VO
         Map<String, String> finalCategoryNameMap = categoryNameMap;
         List<ProductInfoListVO> voList = productList.stream().map(product -> {
-            ProductInfoListVO vo = new ProductInfoListVO();
-            BeanUtils.copyProperties(product, vo);
-            // 拼接分类名称：父分类名/子分类名
+            ProductInfoListVO productInfoListVO = new ProductInfoListVO();
+            BeanUtils.copyProperties(product, productInfoListVO);
             String pName = finalCategoryNameMap.getOrDefault(product.getPCategoryId(), "");
             String cName = finalCategoryNameMap.getOrDefault(product.getCategoryId(), "");
-            vo.setCategoryName(pName + "/" + cName);
+            productInfoListVO.setCategoryName(pName + "/" + cName);
 
             List<ProductSku> skus = skuGroupMap.getOrDefault(product.getProductId(), List.of());
-            vo.setSkuCount(skus.size());
-            vo.setTotalStock(skus.stream()
-                    .mapToInt(s -> s.getStock() != null ? s.getStock() : 0)
+            productInfoListVO.setSkuCount(skus.size());
+            productInfoListVO.setTotalStock(skus.stream()
+                    .mapToInt(sku -> sku.getStock() != null ? sku.getStock() : 0)
                     .sum());
-            return vo;
-        }).collect(Collectors.toList());
+            return productInfoListVO;
+        }).toList();
 
-        return new PageResultVO<>(queryDTO.getPageNo(), queryDTO.getPageSize(), page.getTotal(), voList);
+        return new PageResultVO<>(safeQuery.getPageNo(), safeQuery.getPageSize(), page.getTotal(), voList);
+    }
+
+    @Override
+    public PageResultVO<ProductInfoListVO> loadVisibleProductList(ProductQueryDTO queryDTO) {
+        ProductQueryDTO visibleQuery = queryDTO == null ? new ProductQueryDTO() : queryDTO;
+        visibleQuery.setStatus(ProductStatusEnum.ON_SALE.getStatus());
+        log.info("load visible products, pageNo={}, pageSize={}, categoryId={}, commendType={}",
+                visibleQuery.getPageNo(), visibleQuery.getPageSize(),
+                visibleQuery.getCategoryIdOrPCategoryId(), visibleQuery.getCommendType());
+        return loadProductList(visibleQuery);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveProduct(ProductSaveDTO productSaveDTO) {
-        // 1. 从DTO中提取数据并转换为实体
         ProductInfoVO productInfoVO = productSaveDTO.getProductInfo();
         ProductInfo productInfo = new ProductInfo();
         BeanUtils.copyProperties(productInfoVO, productInfo);
@@ -132,29 +161,24 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
                 productSaveDTO.getProductPropertyList());
         List<ProductSku> skuList = convertSkus(productSaveDTO.getSkuList());
 
-        // 2. 判断是新增还是更新
         boolean isAdd = StringTools.isEmpty(productInfo.getProductId());
         if (isAdd) {
             productInfo.setProductId(StringTools.getRandomNumber(LENGTH_32));
         }
 
-        // 3. 为属性值和SKU设置商品ID
-        productPropertyValueList.forEach(p -> p.setProductId(productInfo.getProductId()));
-        skuList.forEach(s -> s.setProductId(productInfo.getProductId()));
+        productPropertyValueList.forEach(propertyValue -> propertyValue.setProductId(productInfo.getProductId()));
+        skuList.forEach(sku -> sku.setProductId(productInfo.getProductId()));
 
-        // 4. 清除服务端管理的字段（防止前端篡改）
         productInfo.setStatus(null);
         productInfo.setCommendType(null);
 
-        // 5. 计算最低/最高价格
         Optional<ProductSku> minPrice = skuList.stream()
-                .min((s1, s2) -> s1.getPrice().compareTo(s2.getPrice()));
+                .min((left, right) -> left.getPrice().compareTo(right.getPrice()));
         Optional<ProductSku> maxPrice = skuList.stream()
-                .max((s1, s2) -> s1.getPrice().compareTo(s2.getPrice()));
+                .max((left, right) -> left.getPrice().compareTo(right.getPrice()));
         productInfo.setMinPrice(minPrice.get().getPrice());
         productInfo.setMaxPrice(maxPrice.get().getPrice());
 
-        // 6. 执行数据库操作
         if (isAdd) {
             productInfo.setCreateTime(new Date());
             productInfo.setStatus(ProductStatusEnum.OFF_SALE.getStatus());
@@ -162,68 +186,54 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
             this.baseMapper.insert(productInfo);
             productPropertyValueService.saveBatch(productPropertyValueList);
             productSkuService.saveBatch(skuList);
-        } else {
-            // 更新：先删除旧的属性值和SKU，再重新插入
-            this.baseMapper.updateById(productInfo);
+            return;
+        }
 
-            productPropertyValueService.remove(
-                    new LambdaQueryWrapper<ProductPropertyValue>()
-                            .eq(ProductPropertyValue::getProductId, productInfo.getProductId()));
-            productSkuService.remove(
-                    new LambdaQueryWrapper<ProductSku>()
-                            .eq(ProductSku::getProductId, productInfo.getProductId()));
+        this.baseMapper.updateById(productInfo);
+        productPropertyValueService.remove(new LambdaQueryWrapper<ProductPropertyValue>()
+                .eq(ProductPropertyValue::getProductId, productInfo.getProductId()));
+        productSkuService.remove(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getProductId, productInfo.getProductId()));
 
-            if (!productPropertyValueList.isEmpty()) {
-                productPropertyValueService.saveBatch(productPropertyValueList);
-            }
-            if (!skuList.isEmpty()) {
-                productSkuService.saveBatch(skuList);
-            }
+        if (!productPropertyValueList.isEmpty()) {
+            productPropertyValueService.saveBatch(productPropertyValueList);
+        }
+        if (!skuList.isEmpty()) {
+            productSkuService.saveBatch(skuList);
         }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteProduct(String productId) {
-        // 删除商品信息
         this.baseMapper.deleteById(productId);
-
-        // 级联删除属性值
-        productPropertyValueService.remove(
-                new LambdaQueryWrapper<ProductPropertyValue>()
-                        .eq(ProductPropertyValue::getProductId, productId));
-
-        // 级联删除SKU
-        productSkuService.remove(
-                new LambdaQueryWrapper<ProductSku>()
-                        .eq(ProductSku::getProductId, productId));
+        productPropertyValueService.remove(new LambdaQueryWrapper<ProductPropertyValue>()
+                .eq(ProductPropertyValue::getProductId, productId));
+        productSkuService.remove(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getProductId, productId));
     }
 
     @Override
     public ProductInfoDetailVo getProductDetail(String productId) {
         ProductInfo productInfo = this.getById(productId);
-        if (productInfo == null){
-           throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "商品信息不存在");
+        if (productInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "product not found");
         }
-        // 1. 查询商品属性值
+
         LambdaQueryWrapper<ProductPropertyValue> propertyValueQuery = new LambdaQueryWrapper<>();
         propertyValueQuery.eq(ProductPropertyValue::getProductId, productId)
                 .orderByAsc(ProductPropertyValue::getPropertySort);
-
-
         List<ProductPropertyValue> propertyValueList = productPropertyValueService.list(propertyValueQuery);
 
-        // 3. 构建 ProductPropertyVO 列表
         List<ProductPropertyVO> productPropertyList = new ArrayList<>();
         Map<String, ProductPropertyVO> propertyVoMap = new HashMap<>();
-
         for (ProductPropertyValue productPropertyValue : propertyValueList) {
             ProductPropertyVO productPropertyVO = propertyVoMap.get(productPropertyValue.getPropertyId());
             ProductPropertyValueVO propertyValueVo = new ProductPropertyValueVO();
             propertyValueVo.setPropertyValueId(productPropertyValue.getPropertyValueId());
             propertyValueVo.setPropertyCover(productPropertyValue.getPropertyCover());
             propertyValueVo.setPropertyValue(productPropertyValue.getPropertyValue());
-            if (productPropertyVO == null){
+            if (productPropertyVO == null) {
                 productPropertyVO = new ProductPropertyVO();
                 productPropertyVO.setPropertyId(productPropertyValue.getPropertyId());
                 productPropertyVO.setPropertyName(productPropertyValue.getPropertyName());
@@ -234,19 +244,20 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
                 productPropertyValueVOS.add(propertyValueVo);
                 productPropertyVO.setPropertyValueList(productPropertyValueVOS);
                 productPropertyList.add(productPropertyVO);
-            }else {
+            } else {
                 productPropertyVO.getPropertyValueList().add(propertyValueVo);
             }
         }
-        //查询sku信息
-        LambdaQueryWrapper<ProductSku> productSkuLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        productSkuLambdaQueryWrapper.eq(ProductSku::getProductId, productId)
+
+        LambdaQueryWrapper<ProductSku> productSkuQuery = new LambdaQueryWrapper<>();
+        productSkuQuery.eq(ProductSku::getProductId, productId)
                 .orderByAsc(ProductSku::getSort);
         List<ProductSkuVO> productSkuVOS = new ArrayList<>();
-        List<ProductSku> skuList = productSkuService.list(productSkuLambdaQueryWrapper);
-        if (CollectionUtil.isNotEmpty(skuList)){
+        List<ProductSku> skuList = productSkuService.list(productSkuQuery);
+        if (CollectionUtil.isNotEmpty(skuList)) {
             productSkuVOS = BeanUtil.copyToList(skuList, ProductSkuVO.class);
         }
+
         ProductInfoDetailVo productInfoDetailVO = new ProductInfoDetailVo();
         productInfoDetailVO.setProductInfo(productInfo);
         productInfoDetailVO.setProductPropertyList(productPropertyList);
@@ -254,9 +265,35 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         return productInfoDetailVO;
     }
 
-    /**
-     * 将属性值VO列表转换为实体列表
-     */
+    @Override
+    public ProductInfoDetailVo getVisibleProductDetail(String productId) {
+        ProductInfoDetailVo detailVo = getProductDetail(productId);
+        ProductInfo productInfo = detailVo.getProductInfo();
+        if (productInfo == null || !Objects.equals(productInfo.getStatus(), ProductStatusEnum.ON_SALE.getStatus())) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "product is unavailable");
+        }
+        return detailVo;
+    }
+
+    @Override
+    public List<ProductInfoListVO> loadRecommendProducts(Integer limit) {
+        int pageSize = normalizeRecommendLimit(limit);
+        ProductQueryDTO queryDTO = new ProductQueryDTO();
+        queryDTO.setPageNo(1);
+        queryDTO.setPageSize(pageSize);
+        queryDTO.setCommendType(RECOMMEND_PRODUCT);
+        queryDTO.setStatus(ProductStatusEnum.ON_SALE.getStatus());
+        log.info("load recommend products, limit={}", pageSize);
+        return loadProductList(queryDTO).getRecords();
+    }
+
+    private int normalizeRecommendLimit(Integer limit) {
+        if (limit == null || limit < 1) {
+            return DEFAULT_RECOMMEND_LIMIT;
+        }
+        return Math.min(limit, MAX_RECOMMEND_LIMIT);
+    }
+
     private List<ProductPropertyValue> convertPropertyValues(List<ProductPropertyValueVO> voList) {
         if (voList == null) {
             return List.of();
@@ -268,9 +305,6 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         }).collect(Collectors.toList());
     }
 
-    /**
-     * 将SKU VO列表转换为实体列表
-     */
     private List<ProductSku> convertSkus(List<ProductSkuVO> voList) {
         if (voList == null) {
             return List.of();
