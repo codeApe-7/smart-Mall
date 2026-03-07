@@ -59,3 +59,18 @@ CREATE TABLE `product_sku` (
                                PRIMARY KEY (`product_id`, `property_value_id_hash`) USING BTREE,
                                KEY `idx_product_id` (`product_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='商品SKU';
+
+CREATE TABLE `shopping_cart` (
+                                 `cart_id` varchar(32) NOT NULL COMMENT '购物车条目ID',
+                                 `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+                                 `product_id` varchar(32) NOT NULL COMMENT '商品ID',
+                                 `property_value_id_hash` varchar(32) NOT NULL COMMENT 'SKU哈希',
+                                 `property_value_ids` varchar(500) DEFAULT NULL COMMENT 'SKU属性值ID组合',
+                                 `quantity` int(11) NOT NULL DEFAULT '1' COMMENT '购买数量',
+                                 `selected` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0:未勾选 1:已勾选',
+                                 `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+                                 `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+                                 PRIMARY KEY (`cart_id`) USING BTREE,
+                                 UNIQUE KEY `uk_user_product_sku` (`user_id`,`product_id`,`property_value_id_hash`) USING BTREE,
+                                 KEY `idx_user_id` (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='购物车';

@@ -1,5 +1,48 @@
 # SmartMall 开发日志
 
+## 2026-03-07 功能点：用户端购物车基础能力
+
+### 本次目标
+- 建立用户端购物车基础表结构与后端服务。
+- 打通购物车列表、加入购物车、改数量、勾选、删除接口。
+- 为下一个订单创建功能点提供待结算数据来源。
+
+### 本次实现
+- 新增购物车表结构说明：`shopping_cart`。
+- 在 `smartMall-common` 新增购物车实体、DTO、VO、Mapper、Service、ServiceImpl。
+- 在 `smartMall-web` 新增 `MallCartController`，提供以下接口：
+  - `GET /api/cart/list?userId=xxx`
+  - `POST /api/cart/add`
+  - `POST /api/cart/updateQuantity`
+  - `POST /api/cart/updateSelected`
+  - `POST /api/cart/delete`
+- 购物车服务支持：
+  - 同 SKU 重复加入自动合并数量。
+  - 加购与改数量时校验库存。
+  - 列表接口聚合商品、SKU、属性值，并返回已选金额汇总。
+  - 已下架或库存不足商品在列表中标记为 `available=false`。
+- 新增购物车服务层与控制器层测试。
+
+### 测试记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - 继续使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行 Maven。
+- 测试结果：通过。
+
+### 当前影响范围
+- `doc/sql`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 继续实现订单创建与结算流程。
+- 把购物车已选商品直接转换为订单项。
+- 再补取消订单、确认收货等订单状态流转。
+
+### 提交记录
+- Git Commit: 本次功能点提交为“用户端购物车基础能力”。
+
 ## 2026-03-07 功能点：用户端商品浏览与详情接口
 
 ### 本次目标
