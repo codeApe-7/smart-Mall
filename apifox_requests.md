@@ -2273,3 +2273,115 @@ curl --location --request POST 'http://localhost:6061/api/ai-config/save' \
 | ADMIN-AI-CONFIG-SAVE-05 | 传空售后亮点列表 | `afterSalesHighlights=[]` | 返回 `code=200`，服务端回退保留原有或默认售后亮点 |
 
 ---
+# Apifox 接口调试文档 - 管理后台 RAG 知识库维护
+
+以下内容对应功能导图与技术方案中的“RAG 知识库维护与更新”。
+
+> 推荐联调顺序：先调 `GET /knowledge/index/summary` 看 ES 与配置状态 → 调 `GET /knowledge/product/{productId}` 预览知识卡片 → 调 `POST /knowledge/index/sync/{productId}` 验证单商品同步 → 最后调 `POST /knowledge/index/rebuild` 做全量重建。
+
+## 59. 管理后台查询商品知识卡片
+
+> 查询指定商品的知识卡片预览，便于后台确认卖点摘要、评价摘要和售后说明是否符合预期。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/knowledge/product/p10001`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/knowledge/product/p10001'
+```
+
+### 成功断言
+- `code = 200`
+- `data.productId`、`data.productName` 存在
+- `data.sellingPointSummary`、`data.reviewSummary`、`data.afterSalesSummary` 存在
+- `data.knowledgeText` 为拼装后的完整知识文本
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-KNOWLEDGE-PRODUCT-01 | 查询有效商品知识卡片 | 有效 `productId` | 返回 `code=200`，知识卡片结构完整 |
+| ADMIN-KNOWLEDGE-PRODUCT-02 | 商品不存在 | 无效 `productId` | 返回 `code=405`，提示 `product not found` 或等价错误 |
+| ADMIN-KNOWLEDGE-PRODUCT-03 | 商品不可见 | 下架商品 `productId` | 返回知识查询失败或提示商品不可用，符合当前服务端约束 |
+
+## 60. 管理后台查询知识索引概览
+
+> 查询当前搜索索引配置与维护概览，包含 Elasticsearch 地址、索引名、在售商品数、索引文档数、语义搜索开关与连通状态。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/knowledge/index/summary`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/knowledge/index/summary'
+```
+
+### 成功断言
+- `code = 200`
+- `data.semanticSearchEnabled`、`data.productKnowledgeEnabled` 存在
+- `data.elasticsearchUri`、`data.productIndexName` 存在
+- `data.onSaleProductCount`、`data.indexedDocumentCount` 存在
+- `data.reachable` 能反映当前 ES 可达状态
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-KNOWLEDGE-SUMMARY-01 | ES 正常可用 | 无 | 返回 `code=200`，`reachable=true`，索引概览字段完整 |
+| ADMIN-KNOWLEDGE-SUMMARY-02 | 索引尚未创建 | 无 | 返回 `code=200`，`indexedDocumentCount=0` |
+| ADMIN-KNOWLEDGE-SUMMARY-03 | ES 不可达 | 关闭 ES 或改错地址后查询 | 返回 `code=200`，`reachable=false`，其余配置字段仍可查看 |
+
+## 61. 管理后台同步单个商品知识索引
+
+> 同步单个商品到 Elasticsearch 搜索索引。若商品在售，则写入/更新索引；若商品已下架，则从索引删除，避免脏数据残留。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/knowledge/index/sync/p10001`
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/knowledge/index/sync/p10001'
+```
+
+### 成功断言
+- `code = 200`
+- `data.operationType = "single_sync"`
+- `data.requestedCount = 1`
+- `data.successCount + data.failCount = 1`
+- 同步成功后，商品文档在目标索引中可查询或已被删除
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-KNOWLEDGE-SYNC-01 | 同步在售商品 | 在售 `productId` | 返回 `code=200`，`successCount=1`，索引文档更新成功 |
+| ADMIN-KNOWLEDGE-SYNC-02 | 同步下架商品 | 下架 `productId` | 返回 `code=200`，文档从索引删除或已不存在 |
+| ADMIN-KNOWLEDGE-SYNC-03 | 商品不存在 | 无效 `productId` | 返回 `code=405`，提示 `product not found` |
+| ADMIN-KNOWLEDGE-SYNC-04 | ES 不可用 | 有效 `productId` | 返回 `code=501`，提示同步失败 |
+
+## 62. 管理后台全量重建商品知识索引
+
+> 全量重建当前全部在售商品的 Elasticsearch 搜索索引，用于索引初始化、脏数据修复和批量更新。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/knowledge/index/rebuild`
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/knowledge/index/rebuild'
+```
+
+### 成功断言
+- `code = 200`
+- `data.operationType = "full_rebuild"`
+- `data.requestedCount` 等于当前在售商品数
+- `data.successCount + data.failCount = data.requestedCount`
+- 重建完成后，再查 `GET /api/knowledge/index/summary`，`indexedDocumentCount` 与成功写入数量基本一致
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-KNOWLEDGE-REBUILD-01 | 正常重建在售商品索引 | 无 | 返回 `code=200`，重建完成，成功数与在售商品数一致或接近 |
+| ADMIN-KNOWLEDGE-REBUILD-02 | 无在售商品 | 无 | 返回 `code=200`，`requestedCount=0`，重建空索引成功 |
+| ADMIN-KNOWLEDGE-REBUILD-03 | 部分商品知识构建失败 | 制造异常商品数据后重建 | 返回 `code=200`，`failedProductIds` 包含失败商品 |
+| ADMIN-KNOWLEDGE-REBUILD-04 | ES 不可用 | 无 | 返回 `code=501`，提示重建失败 |
+
+---

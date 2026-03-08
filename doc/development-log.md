@@ -1081,3 +1081,54 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：管理后台 AI 配置管理基础能力”。
+## 2026-03-08 功能点：管理后台 RAG 知识库维护基础能力
+
+### 本次目标
+- 按功能导图与技术方案补齐“RAG 知识库维护与更新”后台能力。
+- 提供商品知识卡片预览、搜索索引概览、单商品同步和全量重建入口。
+- 让后台可以直接维护 Elasticsearch 中的商品知识搜索索引，减少索引与数据库数据漂移。
+
+### 本次实现
+- 在 `smartMall-common` 新增后台知识维护 VO：
+  - `AdminKnowledgeIndexSummaryVO`
+  - `AdminKnowledgeIndexSyncResultVO`
+- 在 `smartMall-common` 新增后台知识维护 Service / ServiceImpl：
+  - `AdminKnowledgeManageService`
+  - `AdminKnowledgeManageServiceImpl`
+- 在 `smartMall-admin` 新增 `KnowledgeManageController`，提供接口：
+  - `GET /api/knowledge/product/{productId}` 查询商品知识卡片预览
+  - `GET /api/knowledge/index/summary` 查询知识索引概览
+  - `POST /api/knowledge/index/sync/{productId}` 同步单个商品到搜索索引
+  - `POST /api/knowledge/index/rebuild` 全量重建在售商品搜索索引
+- 索引维护能力说明：
+  - 单商品同步时，若商品为在售状态，则重建对应商品知识文档并写入 Elasticsearch
+  - 若商品已下架，则从 Elasticsearch 删除该商品文档，避免索引脏数据
+  - 全量重建时，先重建索引，再把当前全部在售商品按知识卡片内容批量写入
+  - 索引文档同时写入 `productName`、`productDesc`、`categoryName`、`knowledgeText`、`reviewSummary`、`afterSalesSummary`、`knowledgeTags` 等字段，为后续搜索与知识增强共用
+- 配置复用说明：
+  - 复用 `AiConfigService` 中已维护的 Elasticsearch 地址、索引名、知识增强配置
+  - 后台概览会显示语义搜索开关、知识增强开关、在售商品数、当前索引文档数与连通状态
+- 本次未新增数据库表结构，`doc/sql/smart-mall.sql` 无需变更
+- 更新 `apifox_requests.md`：
+  - 新增后台知识维护接口调试文档
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 补充 AI 服务监控能力，例如模型调用状态、MCP 工具可用性、最近降级原因统计。
+- 若要继续完善知识库维护，可补充索引映射初始化、增量同步日志和失败重试能力。
+- 若仍按后台主线推进，可继续补齐用户账户与权限管理。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台 RAG 知识库维护基础能力”。
