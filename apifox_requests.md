@@ -637,6 +637,8 @@ curl --location --request POST 'http://localhost:8080/api/order/create' \
 > - `10`: 已支付
 > - `20`: 已取消
 > - `30`: 已完成
+> - `40`: 已发货
+> - `50`: 已收货
 > - `60`: 退款申请中
 > - `70`: 已退款
 
@@ -1023,3 +1025,142 @@ curl --location --request POST 'http://localhost:8080/api/refund/reject' \
 | REFUND-REJECT-03 | 退款单不存在 | 无效 `refundId` | 返回 `code=405`，提示 `refund record not found` |
 | REFUND-REJECT-04 | userId 与退款单不匹配 | 他人 `userId` | 返回 `code=501`，提示 `refund does not belong to user` |
 | REFUND-REJECT-05 | 缺少 `refundId` | `refundId=""` | 返回 `code=601`，提示 `refundId can not be blank` |
+
+---
+
+# Apifox 接口调试文档 - 用户端物流
+
+以下内容对应提交记录"完成功能点：用户端发货模拟与确认收货"。
+
+> 推荐联调顺序：先通过支付流程获得一个"已支付"订单 → `模拟发货` → `查询物流` → `确认收货` → `查询订单详情` 验证状态变化。
+>
+> **订单状态说明（含物流）**:
+> - `0`: 待支付
+> - `10`: 已支付
+> - `20`: 已取消
+> - `30`: 已完成
+> - `40`: 已发货
+> - `50`: 已收货
+> - `60`: 退款申请中
+> - `70`: 已退款
+
+## 27. 模拟发货
+
+> 针对已支付订单模拟发货，自动生成物流单号。若同一订单已有物流记录，则直接复用。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/shipping/ship`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "orderId": "o10001",
+    "userId": "u10001",
+    "shippingCompany": "顺丰快递"
+}
+```
+
+> **字段说明**:
+> - `orderId`: 已支付订单ID (必填)
+> - `userId`: 用户ID (必填)
+> - `shippingCompany`: 快递公司 (选填，默认"模拟快递")
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/shipping/ship' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "orderId": "o10001",
+    "userId": "u10001",
+    "shippingCompany": "顺丰快递"
+}'
+```
+
+### 成功断言
+- `code = 200`
+- `data.shippingId`、`data.trackingNo` 非空
+- `data.shippingStatus = 0`（已发货）
+- 发货后订单状态变为 `40`（已发货），`shipTime` 非空
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| SHIPPING-SHIP-01 | 正常发货 | 标准请求体 | 返回 `code=200`，生成物流单，订单状态变为 `40` |
+| SHIPPING-SHIP-02 | 不传快递公司 | 不传 `shippingCompany` | 返回 `code=200`，`data.shippingCompany="模拟快递"` |
+| SHIPPING-SHIP-03 | 重复发货 | 对同一订单连续调用两次 | 返回 `code=200`，第二次返回相同 `trackingNo`（复用已有物流单） |
+| SHIPPING-SHIP-04 | 订单不是已支付状态 | 传待支付或已取消订单 | 返回 `code=501`，提示 `order status does not support shipping` |
+| SHIPPING-SHIP-05 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
+| SHIPPING-SHIP-06 | userId 与订单不匹配 | 他人 `userId` | 返回 `code=405`，提示 `order not found` |
+
+---
+
+## 28. 查询物流详情
+
+> 查询指定用户某一订单的物流信息。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/shipping/detail`
+
+### Query 参数
+- `userId`: (String) 用户ID，例如 `u10001` (Required)
+- `orderId`: (String) 订单ID，例如 `o10001` (Required)
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:8080/api/shipping/detail?userId=u10001&orderId=o10001'
+```
+
+### 成功断言
+- `code = 200`
+- 返回字段包含 `shippingId/trackingNo/shippingCompany/shippingStatus/shippingStatusDesc/createTime/receiveTime`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| SHIPPING-DETAIL-01 | 查询已发货订单物流 | 有效 `userId + orderId` | 返回 `code=200`，可看到物流详情 |
+| SHIPPING-DETAIL-02 | 订单无物流记录 | 未发货的订单 | 返回 `code=405`，提示 `shipping record not found` |
+| SHIPPING-DETAIL-03 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
+| SHIPPING-DETAIL-04 | 缺少参数 | 不传 `userId` 或 `orderId` | 返回 `code=601`，提示参数必填 |
+
+---
+
+## 29. 确认收货
+
+> 用户确认收货，仅允许已发货订单操作。确认后物流状态变为"已签收"，订单状态推进为"已收货"。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/shipping/confirmReceive`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "orderId": "o10001",
+    "userId": "u10001"
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/shipping/confirmReceive' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "orderId": "o10001",
+    "userId": "u10001"
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 物流状态变为 `20`（已签收），`receiveTime` 非空
+- 订单状态变为 `50`（已收货），`receiveTime` 非空
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| SHIPPING-RECEIVE-01 | 正常确认收货 | 标准请求体 | 返回 `code=200`，物流标记签收，订单状态变为 `50` |
+| SHIPPING-RECEIVE-02 | 订单不是已发货状态 | 传已支付或已收货订单 | 返回 `code=501`，提示 `order status does not support confirming receive` |
+| SHIPPING-RECEIVE-03 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
+| SHIPPING-RECEIVE-04 | userId 与订单不匹配 | 他人 `userId` | 返回 `code=405`，提示 `order not found` |
+| SHIPPING-RECEIVE-05 | 缺少 `orderId` | `orderId=""` | 返回 `code=601`，提示 `orderId can not be blank` |

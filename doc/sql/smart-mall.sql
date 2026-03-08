@@ -81,7 +81,7 @@ CREATE TABLE `order_info` (
     `order_id` varchar(32) NOT NULL COMMENT '订单ID',
     `order_no` varchar(32) NOT NULL COMMENT '订单号',
     `user_id` varchar(32) NOT NULL COMMENT '用户ID',
-    `order_status` int(11) NOT NULL DEFAULT '0' COMMENT '0:待支付 10:已支付 20:已取消 30:已完成 60:退款申请中 70:已退款',
+    `order_status` int(11) NOT NULL DEFAULT '0' COMMENT '0:待支付 10:已支付 20:已取消 30:已完成 40:已发货 50:已收货 60:退款申请中 70:已退款',
     `total_amount` decimal(10,2) NOT NULL COMMENT '订单总金额',
     `total_quantity` int(11) NOT NULL COMMENT '商品总数量',
     `receiver_name` varchar(50) NOT NULL COMMENT '收货人',
@@ -93,6 +93,8 @@ CREATE TABLE `order_info` (
     `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
     `cancel_time` datetime DEFAULT NULL COMMENT '取消时间',
     `refund_time` datetime DEFAULT NULL COMMENT '退款时间',
+    `ship_time` datetime DEFAULT NULL COMMENT '发货时间',
+    `receive_time` datetime DEFAULT NULL COMMENT '收货时间',
     PRIMARY KEY (`order_id`) USING BTREE,
     UNIQUE KEY `uk_order_no` (`order_no`) USING BTREE,
     KEY `idx_user_id_status` (`user_id`, `order_status`) USING BTREE
@@ -156,3 +158,21 @@ CREATE TABLE `refund_info` (
     KEY `idx_order_id` (`order_id`) USING BTREE,
     KEY `idx_user_id` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='退款记录表';
+
+
+CREATE TABLE `shipping_info` (
+    `shipping_id` varchar(32) NOT NULL COMMENT '物流ID',
+    `order_id` varchar(32) NOT NULL COMMENT '订单ID',
+    `order_no` varchar(32) NOT NULL COMMENT '订单号',
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `tracking_no` varchar(64) NOT NULL COMMENT '物流单号',
+    `shipping_company` varchar(50) DEFAULT NULL COMMENT '快递公司',
+    `shipping_status` int(11) NOT NULL DEFAULT '0' COMMENT '0:已发货 10:运输中 20:已签收',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    `receive_time` datetime DEFAULT NULL COMMENT '签收时间',
+    PRIMARY KEY (`shipping_id`) USING BTREE,
+    UNIQUE KEY `uk_tracking_no` (`tracking_no`) USING BTREE,
+    KEY `idx_order_id` (`order_id`) USING BTREE,
+    KEY `idx_user_id` (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='物流记录表';

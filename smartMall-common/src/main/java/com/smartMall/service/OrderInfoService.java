@@ -38,4 +38,8 @@ public interface OrderInfoService extends IService<OrderInfo> {
     void markOrderRefunded(String orderId, Date refundTime);
 
     void revertOrderFromRefund(String orderId);
+
+    void markOrderShipped(String orderId, Date shipTime);
+
+    void markOrderReceived(String orderId, Date receiveTime);
 }

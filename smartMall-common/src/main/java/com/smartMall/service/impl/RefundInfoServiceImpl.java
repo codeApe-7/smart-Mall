@@ -44,7 +44,8 @@ public class RefundInfoServiceImpl extends ServiceImpl<RefundInfoMapper, RefundI
     @Transactional(rollbackFor = Exception.class)
     public RefundInfoVO applyRefund(RefundApplyDTO dto) {
         OrderInfo orderInfo = orderInfoService.getUserOrder(dto.getUserId(), dto.getOrderId());
-        if (!OrderStatusEnum.PAID.getStatus().equals(orderInfo.getOrderStatus())) {
+        if (!OrderStatusEnum.PAID.getStatus().equals(orderInfo.getOrderStatus())
+                && !OrderStatusEnum.SHIPPED.getStatus().equals(orderInfo.getOrderStatus())) {
             throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support refund");
         }
         RefundInfo existingRefund = findPendingRefund(orderInfo.getOrderId());

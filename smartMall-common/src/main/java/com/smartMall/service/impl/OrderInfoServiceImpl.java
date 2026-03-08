@@ -253,6 +253,48 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         log.info("revert order from refund, orderId={}", orderId);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markOrderShipped(String orderId, Date shipTime) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (!OrderStatusEnum.PAID.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support shipping");
+        }
+        Date now = shipTime == null ? new Date() : shipTime;
+        orderInfo.setOrderStatus(OrderStatusEnum.SHIPPED.getStatus());
+        orderInfo.setShipTime(now);
+        orderInfo.setUpdateTime(now);
+        this.updateById(orderInfo);
+        log.info("mark order shipped, orderId={}", orderId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markOrderReceived(String orderId, Date receiveTime) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (!OrderStatusEnum.SHIPPED.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support receiving");
+        }
+        Date now = receiveTime == null ? new Date() : receiveTime;
+        orderInfo.setOrderStatus(OrderStatusEnum.RECEIVED.getStatus());
+        orderInfo.setReceiveTime(now);
+        orderInfo.setUpdateTime(now);
+        this.updateById(orderInfo);
+        log.info("mark order received, orderId={}", orderId);
+    }
+
     private List<ShoppingCartItemVO> loadSelectedCartItems(String userId, List<String> cartIds, boolean requireAvailable) {
         validateUserId(userId);
         if (cartIds == null || cartIds.isEmpty()) {

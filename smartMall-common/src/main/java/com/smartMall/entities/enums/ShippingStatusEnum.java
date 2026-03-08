@@ -3,23 +3,18 @@ package com.smartMall.entities.enums;
 import java.util.Arrays;
 
 /**
- * 订单状态枚举。
+ * 物流状态枚举。
  */
-public enum OrderStatusEnum {
+public enum ShippingStatusEnum {
 
-    PENDING_PAYMENT(0, "待支付"),
-    PAID(10, "已支付"),
-    CANCELED(20, "已取消"),
-    COMPLETED(30, "已完成"),
-    SHIPPED(40, "已发货"),
-    RECEIVED(50, "已收货"),
-    REFUND_REQUESTED(60, "退款申请中"),
-    REFUNDED(70, "已退款");
+    SHIPPED(0, "已发货"),
+    IN_TRANSIT(10, "运输中"),
+    DELIVERED(20, "已签收");
 
     private final Integer status;
     private final String desc;
 
-    OrderStatusEnum(Integer status, String desc) {
+    ShippingStatusEnum(Integer status, String desc) {
         this.status = status;
         this.desc = desc;
     }
@@ -32,7 +27,7 @@ public enum OrderStatusEnum {
         return desc;
     }
 
-    public static OrderStatusEnum getByStatus(Integer status) {
+    public static ShippingStatusEnum getByStatus(Integer status) {
         return Arrays.stream(values())
                 .filter(item -> item.status.equals(status))
                 .findFirst()
