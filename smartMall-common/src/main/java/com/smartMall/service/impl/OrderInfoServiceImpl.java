@@ -25,6 +25,7 @@ import com.smartMall.mapper.OrderInfoMapper;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.OrderItemService;
 import com.smartMall.service.ShoppingCartService;
+import com.smartMall.service.UserPreferenceRefreshTrigger;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,9 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
 
     @Resource
     private OrderItemService orderItemService;
+
+    @Resource
+    private UserPreferenceRefreshTrigger userPreferenceRefreshTrigger;
 
     @Override
     public OrderPreviewVO previewOrder(OrderPreviewDTO dto) {
@@ -108,6 +112,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         orderCreateVO.setOrderStatus(orderInfo.getOrderStatus());
         orderCreateVO.setTotalAmount(orderInfo.getTotalAmount());
         log.info("create order success, userId={}, orderId={}, totalAmount={}", dto.getUserId(), orderInfo.getOrderId(), totalAmount);
+        userPreferenceRefreshTrigger.refreshUserPreferenceAsync(dto.getUserId(), "order_create");
         return orderCreateVO;
     }
 

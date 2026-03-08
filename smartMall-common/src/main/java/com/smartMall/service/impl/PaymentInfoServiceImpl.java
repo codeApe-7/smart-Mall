@@ -15,6 +15,7 @@ import com.smartMall.exception.BusinessException;
 import com.smartMall.mapper.PaymentInfoMapper;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.PaymentInfoService;
+import com.smartMall.service.UserPreferenceRefreshTrigger;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,9 @@ public class PaymentInfoServiceImpl extends ServiceImpl<PaymentInfoMapper, Payme
 
     @Resource
     private OrderInfoService orderInfoService;
+
+    @Resource
+    private UserPreferenceRefreshTrigger userPreferenceRefreshTrigger;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -116,6 +120,7 @@ public class PaymentInfoServiceImpl extends ServiceImpl<PaymentInfoMapper, Payme
         Date payTime = new Date();
         updatePaymentByCallback(paymentInfo, PaymentStatusEnum.SUCCESS, dto, payTime);
         orderInfoService.markOrderPaid(orderInfo.getOrderId(), payTime);
+        userPreferenceRefreshTrigger.refreshUserPreferenceAsync(orderInfo.getUserId(), "payment_success");
         log.info("payment callback success, paymentNo={}, orderId={}", paymentInfo.getPaymentNo(), paymentInfo.getOrderId());
     }
 

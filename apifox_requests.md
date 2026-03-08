@@ -564,6 +564,7 @@ curl --location --request POST 'http://localhost:8080/api/order/preview' \
 ## 17. 创建订单
 
 > 基于已勾选购物车项创建待支付订单，创建成功后会清理对应购物车条目。
+> 创建成功后会异步刷新用户偏好档案，便于首页个性化推荐及时感知最新购买意向。
 
 - **Method**: `POST`
 - **URL**: `http://localhost:8080/api/order/create`
@@ -601,6 +602,7 @@ curl --location --request POST 'http://localhost:8080/api/order/create' \
 - `data.orderStatus = 0`（待支付）
 - `data.totalAmount` 与预结算金额一致
 - 成功后再次查询购物车，被下单的 `cartIds` 已被清理
+- 下单成功后，用户偏好档案会异步刷新
 
 ### 测试用例
 | 用例ID | 场景 | 请求参数 | 预期结果 |
@@ -611,6 +613,7 @@ curl --location --request POST 'http://localhost:8080/api/order/create' \
 | ORDER-CREATE-04 | 收货地址为空 | `receiverAddress=""` | 返回 `code=601`，提示 `receiverAddress can not be blank` |
 | ORDER-CREATE-05 | `cartIds` 为空 | `cartIds=[]` | 返回 `code=601`，提示 `cartIds can not be empty` |
 | ORDER-CREATE-06 | 包含未勾选或不可售购物车项 | 异常购物车项 | 返回对应错误，不生成订单 |
+| ORDER-CREATE-07 | 下单后联动刷新偏好 | 有效下单后，再查 `/api/preference/profile?userId=u10001` | 下单返回 `code=200`，随后偏好档案 `orderCount`、`recentProductIds` 或 `updateTime` 更新 |
 
 ---
 
@@ -796,6 +799,7 @@ curl --location --request POST 'http://localhost:8080/api/payment/submit' \
 ## 22. 支付回调
 
 > 模拟第三方支付回调。支持成功、失败、关闭三类回调状态；成功回调后会推进订单为“已支付”。
+> 成功回调后会异步刷新用户偏好档案，增强支付完成后的推荐时效性。
 
 - **Method**: `POST`
 - **URL**: `http://localhost:8080/api/payment/callback`
@@ -831,6 +835,7 @@ curl --location --request POST 'http://localhost:8080/api/payment/callback' \
 - 成功回调后，订单详情中的 `orderStatus = 10`、`payTime` 非空
 - 支付流水状态同步为成功/失败/关闭
 - 对已成功支付单重复发送成功回调，应保持幂等
+- 成功回调后，用户偏好档案会异步刷新
 
 ### 测试用例
 | 用例ID | 场景 | 请求参数 | 预期结果 |
@@ -843,6 +848,7 @@ curl --location --request POST 'http://localhost:8080/api/payment/callback' \
 | PAYMENT-CALLBACK-06 | 非法回调状态 | `callbackStatus="UNKNOWN"` | 返回 `code=601`，提示 `unsupported callbackStatus` |
 | PAYMENT-CALLBACK-07 | 支付单不存在 | 无效 `paymentNo` | 返回 `code=405`，提示 `payment not found` |
 | PAYMENT-CALLBACK-08 | 订单已取消后再回调成功 | 对已取消订单发成功回调 | 返回 `code=501`，提示 `order already canceled` |
+| PAYMENT-CALLBACK-09 | 支付成功后联动刷新偏好 | 成功回调后，再查 `/api/preference/profile?userId=u10001` | 回调返回 `code=200`，随后偏好档案 `updateTime` 更新，订单行为被重新聚合 |
 
 ---
 
@@ -1128,6 +1134,7 @@ curl --location --request GET 'http://localhost:8080/api/shipping/detail?userId=
 ## 29. 确认收货
 
 > 用户确认收货，仅允许已发货订单操作。确认后物流状态变为"已签收"，订单状态推进为"已收货"。
+> 确认收货成功后会异步刷新用户偏好档案，为后续评价与个性化推荐提供更实时的履约数据。
 
 - **Method**: `POST`
 - **URL**: `http://localhost:8080/api/shipping/confirmReceive`
@@ -1155,6 +1162,7 @@ curl --location --request POST 'http://localhost:8080/api/shipping/confirmReceiv
 - `code = 200`
 - 物流状态变为 `20`（已签收），`receiveTime` 非空
 - 订单状态变为 `50`（已收货），`receiveTime` 非空
+- 确认收货成功后，用户偏好档案会异步刷新
 
 ### 测试用例
 | 用例ID | 场景 | 请求参数 | 预期结果 |
@@ -1164,6 +1172,7 @@ curl --location --request POST 'http://localhost:8080/api/shipping/confirmReceiv
 | SHIPPING-RECEIVE-03 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
 | SHIPPING-RECEIVE-04 | userId 与订单不匹配 | 他人 `userId` | 返回 `code=405`，提示 `order not found` |
 | SHIPPING-RECEIVE-05 | 缺少 `orderId` | `orderId=""` | 返回 `code=601`，提示 `orderId can not be blank` |
+| SHIPPING-RECEIVE-06 | 收货后联动刷新偏好 | 有效确认收货后，再查 `/api/preference/profile?userId=u10001` | 收货返回 `code=200`，随后偏好档案 `orderCount`、`updateTime` 或偏好标签更新 |
 
 ---
 
@@ -1901,6 +1910,9 @@ curl --location --request GET 'http://localhost:6050/api/preference/profile?user
 | PREFERENCE-PROFILE-01 | 有购买历史的用户 | `userId=u10001` | 返回 `code=200`，`data` 包含偏好分类、价格区间、搜索关键词、偏好标签等字段 |
 | PREFERENCE-PROFILE-02 | 无历史数据的用户 | `userId=u99999` | 返回 `code=200`，`data.favoriteCategoryIds=[]`，`data.orderCount=0` |
 | PREFERENCE-PROFILE-03 | 评价提交后的偏好联动校验 | 先成功调用 `/api/review/submit`，再查询 `userId=u10001` | 返回 `code=200`，`data.reviewCount`、`data.updateTime` 或 `data.preferenceTags` 发生变化 |
+| PREFERENCE-PROFILE-04 | 下单后的偏好联动校验 | 先成功调用 `/api/order/create`，再查询 `userId=u10001` | 返回 `code=200`，`data.orderCount`、`data.recentProductIds` 或 `data.updateTime` 发生变化 |
+| PREFERENCE-PROFILE-05 | 支付后的偏好联动校验 | 先成功调用 `/api/payment/callback` 成功回调，再查询 `userId=u10001` | 返回 `code=200`，`data.updateTime` 发生变化 |
+| PREFERENCE-PROFILE-06 | 收货后的偏好联动校验 | 先成功调用 `/api/shipping/confirmReceive`，再查询 `userId=u10001` | 返回 `code=200`，偏好档案基于最新订单状态重新聚合 |
 
 ---
 

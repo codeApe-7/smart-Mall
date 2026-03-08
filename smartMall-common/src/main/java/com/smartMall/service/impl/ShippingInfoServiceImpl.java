@@ -14,6 +14,7 @@ import com.smartMall.exception.BusinessException;
 import com.smartMall.mapper.ShippingInfoMapper;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.ShippingInfoService;
+import com.smartMall.service.UserPreferenceRefreshTrigger;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,9 @@ public class ShippingInfoServiceImpl extends ServiceImpl<ShippingInfoMapper, Shi
 
     @Resource
     private OrderInfoService orderInfoService;
+
+    @Resource
+    private UserPreferenceRefreshTrigger userPreferenceRefreshTrigger;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -103,6 +107,7 @@ public class ShippingInfoServiceImpl extends ServiceImpl<ShippingInfoMapper, Shi
         this.updateById(shippingInfo);
 
         orderInfoService.markOrderReceived(orderInfo.getOrderId(), now);
+        userPreferenceRefreshTrigger.refreshUserPreferenceAsync(dto.getUserId(), "confirm_receive");
 
         log.info("confirm receive success, orderId={}, trackingNo={}", dto.getOrderId(), shippingInfo.getTrackingNo());
     }

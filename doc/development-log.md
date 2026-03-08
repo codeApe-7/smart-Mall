@@ -1,5 +1,46 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：用户偏好关键交易节点自动刷新
+
+### 本次目标
+- 将用户偏好自动刷新从“评价提交”扩展到更完整的交易链路。
+- 在下单、支付成功、确认收货等关键节点完成后，自动异步刷新偏好档案，降低推荐滞后。
+- 补充对应联调用例说明，方便通过 Apifox 验证偏好联动更新。
+
+### 本次实现
+- 修改 `OrderInfoServiceImpl.createOrder()`：
+  - 订单创建成功并清理购物车后，异步触发 `refreshUserPreference`
+- 修改 `PaymentInfoServiceImpl.handleSuccessCallback()`：
+  - 支付成功回调推进订单状态后，异步触发 `refreshUserPreference`
+- 修改 `ShippingInfoServiceImpl.confirmReceive()`：
+  - 确认收货成功后，异步触发 `refreshUserPreference`
+- 复用既有 `UserPreferenceRefreshTrigger`：
+  - 使用不同 `triggerSource` 标识 `order_create`、`payment_success`、`confirm_receive`
+- 更新 `apifox_requests.md`：
+  - 为创建订单、支付回调、确认收货补充偏好联动断言和测试场景
+  - 为偏好档案查询补充交易节点联动校验用例
+- 本次未新增接口与数据库表结构，`doc/sql/smart-mall.sql` 无需变更
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+
+### 下一步建议
+- 继续把退款申请、退款通过/拒绝等订单分支状态纳入偏好自动刷新触发点。
+- 扩展 AI Agent 的偏好感知能力，例如根据最新交易阶段主动推荐相似商品、配件或新品。
+- 若需要更细粒度的推荐，可在偏好聚合中区分“下单偏好”“已支付偏好”“已完成偏好”等权重来源。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：用户偏好关键交易节点自动刷新"。
+
 ## 2026-03-08 功能点：用户偏好自动刷新与首页个性化推荐接口
 
 ### 本次目标
