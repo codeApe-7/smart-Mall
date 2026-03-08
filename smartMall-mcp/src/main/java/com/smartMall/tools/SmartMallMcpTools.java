@@ -25,6 +25,7 @@ import com.smartMall.service.ProductReviewService;
 import com.smartMall.service.RefundInfoService;
 import com.smartMall.service.ShippingInfoService;
 import com.smartMall.service.UserPreferenceService;
+import jakarta.annotation.Resource;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -38,39 +39,26 @@ import java.util.List;
 @Service
 public class SmartMallMcpTools {
 
-    private final ProductInfoService productInfoService;
-    private final ProductKnowledgeService productKnowledgeService;
-    private final OrderInfoService orderInfoService;
-    private final RefundInfoService refundInfoService;
-    private final ShippingInfoService shippingInfoService;
-    private final ProductReviewService productReviewService;
-    private final UserPreferenceService userPreferenceService;
+    @Resource
+    private ProductInfoService productInfoService;
 
-    public SmartMallMcpTools(ProductInfoService productInfoService,
-                             ProductKnowledgeService productKnowledgeService,
-                             OrderInfoService orderInfoService,
-                             RefundInfoService refundInfoService,
-                             ShippingInfoService shippingInfoService,
-                             ProductReviewService productReviewService,
-                             UserPreferenceService userPreferenceService) {
-        this.productInfoService = productInfoService;
-        this.productKnowledgeService = productKnowledgeService;
-        this.orderInfoService = orderInfoService;
-        this.refundInfoService = refundInfoService;
-        this.shippingInfoService = shippingInfoService;
-        this.productReviewService = productReviewService;
-        this.userPreferenceService = userPreferenceService;
-    }
+    @Resource
+    private ProductKnowledgeService productKnowledgeService;
 
-    public SmartMallMcpTools(ProductInfoService productInfoService,
-                             OrderInfoService orderInfoService,
-                             RefundInfoService refundInfoService,
-                             ShippingInfoService shippingInfoService,
-                             ProductReviewService productReviewService,
-                             UserPreferenceService userPreferenceService) {
-        this(productInfoService, null, orderInfoService, refundInfoService, shippingInfoService,
-                productReviewService, userPreferenceService);
-    }
+    @Resource
+    private OrderInfoService orderInfoService;
+
+    @Resource
+    private RefundInfoService refundInfoService;
+
+    @Resource
+    private ShippingInfoService shippingInfoService;
+
+    @Resource
+    private ProductReviewService productReviewService;
+
+    @Resource
+    private UserPreferenceService userPreferenceService;
 
     @Tool(name = "search_visible_products", description = "Search visible products by keyword")
     public PageResultVO<ProductInfoListVO> searchVisibleProducts(
