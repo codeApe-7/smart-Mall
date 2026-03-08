@@ -399,3 +399,69 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交为“用户端商品浏览与详情接口”。
+
+## 2026-03-08 功能点：智能购物对话接入与商品检索基础能力
+
+### 本次目标
+- 衔接开发日志中的“智能购物模式”下一步建议，先落地可运行的对话接入层。
+- 打通智能购物模式中的商品检索、商品推荐、商品详情、订单查询、取消订单五类高频对话场景。
+- 为后续接入 Spring AI、RAG 商品检索与 MCP 工具调用保留统一入口。
+
+### 本次实现
+- 在 `smartMall-common` 新增智能购物会话领域模型：
+  - `AssistantChatLog` 会话日志实体
+  - `AssistantIntentEnum` 对话意图枚举
+- 新增智能购物 DTO / VO：
+  - `AssistantChatRequestDTO` 对话请求入参
+  - `AssistantHistoryQueryDTO` 会话历史分页查询入参
+  - `AssistantChatResponseVO` 对话响应视图
+  - `AssistantChatPayloadVO` 对话载荷视图
+  - `AssistantChatHistoryVO` 会话历史视图
+  - `AssistantOperationVO` 对话操作结果视图
+- 新增会话日志 Mapper / Service / ServiceImpl：
+  - `AssistantChatLogMapper`
+  - `AssistantChatLogService`
+  - `AssistantChatLogServiceImpl`
+- 新增智能购物编排服务：
+  - `MallAssistantService`
+  - `MallAssistantServiceImpl`
+- 在 `smartMall-web` 新增智能购物入口：
+  - `POST /api/assistant/chat` 同步对话接口
+  - `POST /api/assistant/history` 会话历史分页查询接口
+  - `WS /api/ws/assistant` WebSocket 对话入口
+- 对话能力已支持：
+  - 关键词商品搜索（复用用户端在售商品列表能力）
+  - 推荐商品查询
+  - 商品详情查询
+  - 用户订单列表查询（支持从自然语言中识别常见状态）
+  - 对话式取消待支付订单
+  - 智能购物会话日志持久化
+- 在 `doc/sql/smart-mall.sql` 追加：
+  - `assistant_chat_log` 表结构
+- 补充测试：
+  - `MallAssistantServiceImplTest`
+  - `MallAssistantControllerTest`
+  - `MallAssistantWebSocketHandlerTest`
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 接入 Spring AI 模型与提示词编排，替换当前规则式意图识别。
+- 衔接 Elasticsearch / RAG 商品检索，支持更自然的商品需求描述。
+- 在 `smartMall-mcp` 中补充商品查询、订单查询等 MCP 工具，并接入对话流程。
+- 继续补齐对话式退款、确认收货、评价商品等订单操作。
+
+### 提交记录
+- Git Commit: 本次功能点提交为“完成功能点：智能购物对话接入与商品检索基础能力”。

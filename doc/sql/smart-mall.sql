@@ -194,3 +194,17 @@ CREATE TABLE `product_review` (
     KEY `idx_product_id` (`product_id`) USING BTREE,
     KEY `idx_user_id` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='商品评价表';
+
+CREATE TABLE `assistant_chat_log` (
+    `chat_id` varchar(32) NOT NULL COMMENT '智能购物会话消息ID',
+    `session_id` varchar(32) NOT NULL COMMENT '会话ID',
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `request_text` varchar(500) NOT NULL COMMENT '用户消息',
+    `intent_type` varchar(64) NOT NULL COMMENT '识别出的意图类型',
+    `reply_text` varchar(1000) NOT NULL COMMENT '助手回复内容',
+    `payload_summary` varchar(1000) DEFAULT NULL COMMENT '返回载荷摘要',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`chat_id`) USING BTREE,
+    KEY `idx_session_id` (`session_id`) USING BTREE,
+    KEY `idx_user_id_create_time` (`user_id`, `create_time`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='智能购物会话日志表';

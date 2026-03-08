@@ -1300,3 +1300,245 @@ curl --location --request POST 'http://localhost:8080/api/review/productReviews'
 | REVIEW-PRODUCT-02 | 商品无评价 | 无评价记录的商品 | 返回 `code=200`，空 `records` |
 | REVIEW-PRODUCT-03 | 分页第二页 | `pageNo=2` | 返回 `code=200`，第二页数据或空 |
 | REVIEW-PRODUCT-04 | 缺少 productId | `productId=""` | 返回 `code=601`，提示 `productId can not be blank` |
+
+---
+
+# Apifox 接口调试文档 - 用户端商品浏览
+
+以下内容对应提交记录“完成功能点：用户端商品浏览与详情接口”。
+
+> 推荐联调顺序：`查询商品列表` → `查询商品详情` → `查询推荐商品`。
+
+## 33. 查询用户端商品列表
+
+> 分页查询用户端可见商品，仅返回已上架商品。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/product/list`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "pageNo": 1,
+    "pageSize": 10,
+    "productName": "手机",
+    "categoryIdOrPCategoryId": "c1001",
+    "commendType": 1
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/product/list' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "pageNo": 1,
+    "pageSize": 10,
+    "productName": "手机"
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 返回分页结构：`pageNo/pageSize/totalCount/totalPages/records`
+- `records` 中每条包含 `productId/productName/categoryName/skuCount/totalStock/minPrice/maxPrice`
+- 仅返回在售商品
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-LIST-01 | 查询全部在售商品 | 仅传分页参数 | 返回 `code=200`，`records` 为在售商品列表 |
+| PRODUCT-LIST-02 | 按商品名称模糊查询 | `productName="手机"` | 返回 `code=200`，结果名称与关键词匹配 |
+| PRODUCT-LIST-03 | 按分类查询 | `categoryIdOrPCategoryId="c1001"` | 返回 `code=200`，结果均属于目标分类或父分类 |
+| PRODUCT-LIST-04 | 仅查询推荐商品 | `commendType=1` | 返回 `code=200`，结果为推荐商品 |
+| PRODUCT-LIST-05 | 查询空结果页 | 传不存在的关键词 | 返回 `code=200`，`records=[]` |
+
+---
+
+## 34. 查询推荐商品
+
+> 查询用户端推荐商品列表，默认返回 6 条。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/product/recommend?limit=4`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:8080/api/product/recommend?limit=4'
+```
+
+### 成功断言
+- `code = 200`
+- 返回数组结构，每条记录包含 `productId/productName/minPrice/maxPrice`
+- `limit` 不传时使用默认值
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-RECOMMEND-01 | 正常查询推荐商品 | `limit=4` | 返回 `code=200`，数组长度不超过 4 |
+| PRODUCT-RECOMMEND-02 | 不传 limit | 无 | 返回 `code=200`，使用默认推荐条数 |
+| PRODUCT-RECOMMEND-03 | limit 小于 1 | `limit=0` | 返回 `code=200`，回退为默认条数 |
+| PRODUCT-RECOMMEND-04 | limit 超出上限 | `limit=99` | 返回 `code=200`，按服务端最大限制返回 |
+
+---
+
+## 35. 查询商品详情
+
+> 查询指定商品详情，仅允许查看已上架商品。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/product/detail/p10001`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:8080/api/product/detail/p10001'
+```
+
+### 成功断言
+- `code = 200`
+- 返回字段包含 `productInfo/productPropertyList/skuList`
+- `productPropertyList` 含属性及属性值集合
+- `skuList` 含 SKU 价格、库存、属性值组合
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-DETAIL-01 | 查询已上架商品详情 | 有效 `productId` | 返回 `code=200`，可看到商品、属性、SKU 明细 |
+| PRODUCT-DETAIL-02 | 商品不存在 | 无效 `productId` | 返回 `code=405`，提示 `product not found` |
+| PRODUCT-DETAIL-03 | 商品已下架 | 下架商品 `productId` | 返回 `code=405`，提示 `product is unavailable` |
+
+---
+
+# Apifox 接口调试文档 - 智能购物助手
+
+以下内容对应提交记录“完成功能点：智能购物对话接入与商品检索基础能力”。
+
+> 推荐联调顺序：`同步对话` → `查询会话历史` → `WebSocket 对话`。
+
+## 36. 智能购物同步对话
+
+> 通过 HTTP 发起一轮智能购物对话，当前支持商品搜索、推荐、商品详情、订单查询、取消订单。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/chat`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "sessionId": "s10001",
+    "message": "帮我找手机"
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/assistant/chat' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "userId": "u10001",
+    "sessionId": "s10001",
+    "message": "帮我找手机"
+}'
+```
+
+### 成功断言
+- `code = 200`
+- `data.sessionId` 有值；未传时服务端自动生成
+- `data.intentType` 为识别出的意图，如 `PRODUCT_SEARCH` / `ORDER_CANCEL`
+- `data.reply` 为对话回复文本
+- `data.payload` 中包含相应业务数据
+- `data.suggestions` 返回后续可继续提问的建议短语
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-CHAT-01 | 商品搜索 | `message="帮我找手机"` | 返回 `code=200`，`intentType=PRODUCT_SEARCH`，`payload.productPage.records` 非空或为空列表 |
+| ASSISTANT-CHAT-02 | 推荐商品 | `message="帮我推荐几款热销商品"` | 返回 `code=200`，`intentType=PRODUCT_RECOMMEND` |
+| ASSISTANT-CHAT-03 | 商品详情 | `message="查看商品详情 p10001"` | 返回 `code=200`，`intentType=PRODUCT_DETAIL`，含 `payload.productDetail` |
+| ASSISTANT-CHAT-04 | 查询订单列表 | `message="查询我的订单"` | 返回 `code=200`，`intentType=ORDER_LIST`，含 `payload.orderPage` |
+| ASSISTANT-CHAT-05 | 查询订单详情 | `message="查看订单详情 o10001"` | 返回 `code=200`，`intentType=ORDER_DETAIL`，含 `payload.orderDetail` |
+| ASSISTANT-CHAT-06 | 取消待支付订单 | `message="取消订单 o10001"` | 返回 `code=200`，`intentType=ORDER_CANCEL`，含 `payload.operation` |
+| ASSISTANT-CHAT-07 | 取消不可取消订单 | 已支付或已取消订单 | 返回 `code=501`，提示 `order can not be canceled` |
+| ASSISTANT-CHAT-08 | 缺少 userId | `userId=""` | 返回 `code=601`，提示 `userId can not be blank` |
+| ASSISTANT-CHAT-09 | 缺少 message | `message=""` | 返回 `code=601`，提示 `message can not be blank` |
+
+---
+
+## 37. 查询智能购物会话历史
+
+> 分页查询某用户的智能购物会话历史；可按 `sessionId` 过滤单个会话。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/history`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "sessionId": "s10001",
+    "pageNo": 1,
+    "pageSize": 10
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/assistant/history' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "userId": "u10001",
+    "sessionId": "s10001",
+    "pageNo": 1,
+    "pageSize": 10
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 返回分页结构：`pageNo/pageSize/totalCount/totalPages/records`
+- `records` 中每条包含 `chatId/sessionId/userId/requestText/intentType/intentDesc/replyText/createTime`
+- 按 `createTime` 倒序排列
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-HISTORY-01 | 查询全部历史 | 仅传 `userId` | 返回 `code=200`，按时间倒序返回会话记录 |
+| ASSISTANT-HISTORY-02 | 按会话过滤 | 传 `userId + sessionId` | 返回 `code=200`，结果仅属于该会话 |
+| ASSISTANT-HISTORY-03 | 查询空结果 | 不存在的 `sessionId` | 返回 `code=200`，`records=[]` |
+| ASSISTANT-HISTORY-04 | 缺少 userId | `userId=""` | 返回 `code=601`，提示 `userId can not be blank` |
+
+---
+
+## 38. WebSocket 智能购物对话
+
+> 通过 WebSocket 方式发起智能购物对话。服务端返回的消息结构与同步对话保持一致。
+
+- **Protocol**: `WebSocket`
+- **URL**: `ws://localhost:8080/api/ws/assistant`
+
+### 首条消息示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "sessionId": "s10002",
+    "message": "帮我推荐几款热销商品"
+}
+```
+
+### 成功断言
+- 服务端返回 JSON 包装结构：`code/info/data`
+- `data.intentType` 与同步对话接口保持一致
+- `data.reply` 返回助手回复
+- 业务异常时返回对应错误码和错误信息
+
+### 测试用例
+| 用例ID | 场景 | 请求消息 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-WS-01 | 推荐商品对话 | `message="帮我推荐几款热销商品"` | 返回 `code=200`，`data.intentType=PRODUCT_RECOMMEND` |
+| ASSISTANT-WS-02 | 查询订单详情 | `message="查看订单详情 o10001"` | 返回 `code=200`，`data.intentType=ORDER_DETAIL` |
+| ASSISTANT-WS-03 | 业务异常透传 | `message="取消订单 o10001"`，订单不可取消 | 返回对应业务错误码与错误信息 |
+| ASSISTANT-WS-04 | 非法 JSON 消息 | 发送非 JSON 文本 | 返回 `code=500`，提示 `assistant websocket message parse failed` |
