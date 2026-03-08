@@ -14,11 +14,11 @@ import com.smartMall.entities.domain.UserPreference;
 import com.smartMall.entities.enums.AssistantIntentEnum;
 import com.smartMall.entities.enums.OrderStatusEnum;
 import com.smartMall.entities.vo.UserPreferenceVO;
+import com.smartMall.mapper.OrderInfoMapper;
+import com.smartMall.mapper.ProductInfoMapper;
 import com.smartMall.mapper.UserPreferenceMapper;
 import com.smartMall.service.AssistantChatLogService;
-import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.OrderItemService;
-import com.smartMall.service.ProductInfoService;
 import com.smartMall.service.ProductReviewService;
 import com.smartMall.service.ShoppingCartService;
 import com.smartMall.service.SysCategoryService;
@@ -56,13 +56,13 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
     private UserPreferenceProperties preferenceProperties;
 
     @Resource
-    private OrderInfoService orderInfoService;
+    private OrderInfoMapper orderInfoMapper;
 
     @Resource
     private OrderItemService orderItemService;
 
     @Resource
-    private ProductInfoService productInfoService;
+    private ProductInfoMapper productInfoMapper;
 
     @Resource
     private SysCategoryService sysCategoryService;
@@ -119,7 +119,7 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
                 OrderStatusEnum.CANCELED.getStatus(),
                 OrderStatusEnum.REFUND_REQUESTED.getStatus(),
                 OrderStatusEnum.REFUNDED.getStatus());
-        List<OrderInfo> recentOrders = orderInfoService.list(new LambdaQueryWrapper<OrderInfo>()
+        List<OrderInfo> recentOrders = orderInfoMapper.selectList(new LambdaQueryWrapper<OrderInfo>()
                 .eq(OrderInfo::getUserId, userId)
                 .notIn(OrderInfo::getOrderStatus, excludedStatuses)
                 .ge(OrderInfo::getCreateTime, sinceDate)
@@ -140,7 +140,7 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
         // 3. Category preference: frequency sorted top N
         Map<String, Long> categoryFrequency = new LinkedHashMap<>();
         if (!purchasedProductIds.isEmpty()) {
-            List<ProductInfo> purchasedProducts = productInfoService.listByIds(purchasedProductIds);
+            List<ProductInfo> purchasedProducts = productInfoMapper.selectBatchIds(purchasedProductIds);
             for (ProductInfo product : purchasedProducts) {
                 if (StringTools.isNotEmpty(product.getCategoryId())) {
                     categoryFrequency.merge(product.getCategoryId(), 1L, Long::sum);
@@ -156,7 +156,7 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
                 .distinct()
                 .toList();
         if (!cartProductIds.isEmpty()) {
-            List<ProductInfo> cartProducts = productInfoService.listByIds(cartProductIds);
+            List<ProductInfo> cartProducts = productInfoMapper.selectBatchIds(cartProductIds);
             for (ProductInfo product : cartProducts) {
                 if (StringTools.isNotEmpty(product.getCategoryId())) {
                     categoryFrequency.merge(product.getCategoryId(), 1L, Long::sum);
