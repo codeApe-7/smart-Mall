@@ -16,11 +16,11 @@ import com.smartMall.entities.enums.OrderStatusEnum;
 import com.smartMall.entities.vo.UserPreferenceVO;
 import com.smartMall.mapper.OrderInfoMapper;
 import com.smartMall.mapper.ProductInfoMapper;
+import com.smartMall.mapper.ProductReviewMapper;
+import com.smartMall.mapper.ShoppingCartMapper;
 import com.smartMall.mapper.UserPreferenceMapper;
 import com.smartMall.service.AssistantChatLogService;
 import com.smartMall.service.OrderItemService;
-import com.smartMall.service.ProductReviewService;
-import com.smartMall.service.ShoppingCartService;
 import com.smartMall.service.SysCategoryService;
 import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
@@ -71,10 +71,10 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
     private AssistantChatLogService assistantChatLogService;
 
     @Resource
-    private ProductReviewService productReviewService;
+    private ProductReviewMapper productReviewMapper;
 
     @Resource
-    private ShoppingCartService shoppingCartService;
+    private ShoppingCartMapper shoppingCartMapper;
 
     @Override
     public UserPreferenceVO getUserPreference(String userId) {
@@ -149,7 +149,7 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
         }
 
         // 4. Shopping cart signal: supplement category preference
-        List<ShoppingCart> cartItems = shoppingCartService.list(new LambdaQueryWrapper<ShoppingCart>()
+        List<ShoppingCart> cartItems = shoppingCartMapper.selectList(new LambdaQueryWrapper<ShoppingCart>()
                 .eq(ShoppingCart::getUserId, userId));
         List<String> cartProductIds = cartItems.stream()
                 .map(ShoppingCart::getProductId)
@@ -216,7 +216,7 @@ public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper,
         preference.setRecentSearchKeywords(joinList(new ArrayList<>(searchKeywords)));
 
         // 7. Review data: average rating and count
-        List<ProductReview> reviews = productReviewService.list(new LambdaQueryWrapper<ProductReview>()
+        List<ProductReview> reviews = productReviewMapper.selectList(new LambdaQueryWrapper<ProductReview>()
                 .eq(ProductReview::getUserId, userId));
         preference.setReviewCount(reviews.size());
         if (!reviews.isEmpty()) {
