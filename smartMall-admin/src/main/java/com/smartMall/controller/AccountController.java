@@ -1,25 +1,25 @@
 package com.smartMall.controller;
 
 import com.smartMall.component.RedisComponent;
-import com.smartMall.entities.config.AppConfig;
 import com.smartMall.entities.dto.LoginDTO;
+import com.smartMall.entities.enums.ResponseCodeEnum;
+import com.smartMall.entities.vo.AdminCurrentAccountVO;
 import com.smartMall.entities.vo.CheckCodeVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.exception.BusinessException;
+import com.smartMall.service.AdminAuthorityManageService;
 import com.smartMall.utils.StringTools;
 import com.wf.captcha.ArithmeticCaptcha;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
-
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * @author <a href="https://github.com/aiaicoder"> 小新
- * @version 1.0
- * @date 2026/1/20 21:59
+ * 后台账号登录控制器。
  */
 @RestController
 @RequestMapping("/account")
@@ -29,7 +29,7 @@ public class AccountController {
     private RedisComponent redisComponent;
 
     @Resource
-    private AppConfig appConfig;
+    private AdminAuthorityManageService adminAuthorityManageService;
 
     @RequestMapping("/checkCode")
     public ResponseVO<CheckCodeVO> checkCode() {
@@ -45,22 +45,26 @@ public class AccountController {
 
     @PostMapping("/login")
     public ResponseVO<String> login(@RequestBody @Valid LoginDTO loginDTO) {
-        String account = loginDTO.getAccount();
-        String password = loginDTO.getPassword();
         try {
-            if (!account.equalsIgnoreCase(appConfig.getAdminAccount())
-                    || !password.equalsIgnoreCase(StringTools.encodeByMd5(appConfig.getAdminPassword()))) {
-                throw new BusinessException("账号或密码错误");
-            }
             String cachedCode = redisComponent.getCheckCode(loginDTO.getCheckCodeKey());
             if (cachedCode == null || !loginDTO.getCheckCode().equalsIgnoreCase(cachedCode)) {
                 throw new BusinessException("验证码错误");
             }
-            String token = redisComponent.saveToken(account);
+            String principal = adminAuthorityManageService.authenticate(loginDTO.getAccount(), loginDTO.getPassword());
+            String token = redisComponent.saveToken(principal);
             return ResponseVO.success(token);
         } finally {
             redisComponent.cleanCheckCode(loginDTO.getCheckCodeKey());
         }
+    }
+
+    @GetMapping("/profile")
+    public ResponseVO<AdminCurrentAccountVO> profile(String adminToken) {
+        String principal = redisComponent.getToken(adminToken);
+        if (StringTools.isEmpty(principal)) {
+            throw new BusinessException(ResponseCodeEnum.UNAUTHORIZED, "admin token is invalid");
+        }
+        return ResponseVO.success(adminAuthorityManageService.getCurrentAccount(principal));
     }
 
     @PostMapping("/logout")

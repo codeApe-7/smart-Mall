@@ -1122,6 +1122,100 @@
 - 增强 `MallAssistantAgentServiceImpl`：
   - 当用户消息包含“对比 / 比较 / 哪个好 / 怎么选 / 区别 / vs / pk”等关键词时
   - 自动走商品知识结构化比较服务
+
+## 2026-03-08 功能点：管理后台用户账户与权限管理基础能力
+
+### 本次目标
+- 按开发日志“下一步建议”和系统架构中的“用户账户与权限管理”补齐后台主线能力。
+- 提供后台管理员账号、角色、权限目录的基础管理接口，并让管理员登录从数据库账号优先读取。
+- 保持普通用户登录仍留在 `smartMall-web`，管理员认证与资料查询继续由 `smartMall-admin` 独立承接。
+
+### 本次实现
+- 更新 `doc/sql/smart-mall.sql`：
+  - 新增 `sys_admin_account`
+  - 新增 `sys_admin_role`
+  - 新增 `sys_admin_account_role`
+- 在 `smartMall-common` 新增后台账户权限领域模型：
+  - `SysAdminAccount`
+  - `SysAdminRole`
+  - `SysAdminAccountRole`
+- 在 `smartMall-common` 新增后台账户权限枚举：
+  - `AdminAccountStatusEnum`
+  - `AdminPermissionEnum`
+- 在 `smartMall-common` 新增后台账户权限 DTO / VO：
+  - `AdminAccountQueryDTO`
+  - `AdminAccountSaveDTO`
+  - `AdminAccountStatusDTO`
+  - `AdminAccountPasswordDTO`
+  - `AdminRoleQueryDTO`
+  - `AdminRoleSaveDTO`
+  - `AdminRoleStatusDTO`
+  - `AdminAccountListVO`
+  - `AdminAccountDetailVO`
+  - `AdminRoleVO`
+  - `AdminPermissionVO`
+  - `AdminPermissionGroupVO`
+  - `AdminCurrentAccountVO`
+- 在 `smartMall-common` 新增后台账户权限 Mapper / Service / ServiceImpl：
+  - `SysAdminAccountMapper`
+  - `SysAdminRoleMapper`
+  - `SysAdminAccountRoleMapper`
+  - `SysAdminAccountService`
+  - `SysAdminRoleService`
+  - `SysAdminAccountRoleService`
+  - `SysAdminAccountServiceImpl`
+  - `SysAdminRoleServiceImpl`
+  - `SysAdminAccountRoleServiceImpl`
+  - `AdminAuthorityManageService`
+  - `AdminAuthorityManageServiceImpl`
+- 在 `smartMall-admin` 新增控制器：
+  - `AuthorityManageController`
+- 扩展 `AccountController`：
+  - `POST /api/account/login` 改为数据库后台账号优先校验，不命中时回退配置账号
+  - 新增 `GET /api/account/profile`
+- 新增后台接口：
+  - `POST /api/authority/account/list`
+  - `GET /api/authority/account/detail/{accountId}`
+  - `POST /api/authority/account/save`
+  - `POST /api/authority/account/status`
+  - `POST /api/authority/account/reset-password`
+  - `POST /api/authority/role/list`
+  - `POST /api/authority/role/save`
+  - `POST /api/authority/role/status`
+  - `GET /api/authority/permission/list`
+- 后台账户与权限管理能力包括：
+  - 分页查询后台账号，支持按关键词、状态、角色筛选
+  - 查询后台账号详情，返回已分配角色和生效权限编码
+  - 创建 / 编辑后台账号，支持绑定角色、设置超级管理员和重置密码
+  - 分页查询后台角色，支持维护角色编码、名称、权限编码列表与启用状态
+  - 返回按分组整理的权限目录，覆盖数据看板、交易管理、用户运营、AI 管理和系统管理
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" -DskipTests compile`
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dtest=AdminAuthorityManageTempTest" "-DfailIfNoTests=false" test`
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+  - 本地临时测试验证通过，验证后已删除。
+  - 模块测试通过。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 继续补齐后台权限闭环，例如基于 `adminToken` 的统一拦截器、接口级权限校验和菜单权限收敛。
+- 补充后台账号操作审计日志，例如登录成功/失败、角色变更、密码重置和账号状态变更记录。
+- 若继续沿管理后台主线推进，可补后台公告/消息通知管理或更细粒度的系统配置模块。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台用户账户与权限管理基础能力”。
   - 将比较结果作为增强上下文注入 Spring AI Agent Prompt
 - 扩展 `smartMall-mcp` 工具：
   - 新增 `compare_product_knowledge`

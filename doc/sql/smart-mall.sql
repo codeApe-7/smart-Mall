@@ -273,3 +273,46 @@ CREATE TABLE `ai_monitor_event` (
     KEY `idx_event_source_time` (`event_source`, `create_time`) USING BTREE,
     KEY `idx_event_type_time` (`event_type`, `create_time`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='AI监控事件表';
+
+CREATE TABLE `sys_admin_account` (
+    `account_id` varchar(32) NOT NULL COMMENT '后台账号ID',
+    `account_name` varchar(64) NOT NULL COMMENT '登录账号',
+    `password` varchar(64) NOT NULL COMMENT '登录密码(MD5)',
+    `nickname` varchar(64) DEFAULT NULL COMMENT '账号昵称',
+    `phone` varchar(30) DEFAULT NULL COMMENT '手机号',
+    `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+    `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0:禁用 1:启用',
+    `super_admin` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0:普通管理员 1:超级管理员',
+    `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+    `last_login_time` datetime DEFAULT NULL COMMENT '最近登录时间',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`account_id`) USING BTREE,
+    UNIQUE KEY `uk_account_name` (`account_name`) USING BTREE,
+    KEY `idx_status` (`status`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='后台管理员账号表';
+
+CREATE TABLE `sys_admin_role` (
+    `role_id` varchar(32) NOT NULL COMMENT '角色ID',
+    `role_code` varchar(64) NOT NULL COMMENT '角色编码',
+    `role_name` varchar(64) NOT NULL COMMENT '角色名称',
+    `permission_codes` varchar(1000) DEFAULT NULL COMMENT '权限编码列表(逗号分隔)',
+    `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0:禁用 1:启用',
+    `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`role_id`) USING BTREE,
+    UNIQUE KEY `uk_role_code` (`role_code`) USING BTREE,
+    KEY `idx_role_status` (`status`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='后台管理员角色表';
+
+CREATE TABLE `sys_admin_account_role` (
+    `rel_id` varchar(32) NOT NULL COMMENT '关联ID',
+    `account_id` varchar(32) NOT NULL COMMENT '后台账号ID',
+    `role_id` varchar(32) NOT NULL COMMENT '角色ID',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`rel_id`) USING BTREE,
+    UNIQUE KEY `uk_account_role` (`account_id`, `role_id`) USING BTREE,
+    KEY `idx_role_id` (`role_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='后台管理员账号角色关联表';
