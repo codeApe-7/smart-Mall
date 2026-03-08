@@ -44,6 +44,122 @@
   - `order_info.order_status` 注释更新（含退款状态）
   - `refund_info` 表结构
 
+### 接口测试用例
+
+#### 1. POST /api/refund/apply —— 提交退款申请
+**请求体：**
+```json
+{
+    "userId": "用户ID",
+    "orderId": "已支付的订单ID",
+    "refundReason": "商品不满意"
+}
+```
+**预期响应（成功）：**
+```json
+{
+    "status": "success",
+    "code": 200,
+    "info": "请求成功",
+    "data": {
+        "refundId": "退款ID",
+        "refundNo": "R20260308xxxxxx123456",
+        "orderId": "订单ID",
+        "orderNo": "订单号",
+        "refundAmount": 199.00,
+        "refundReason": "商品不满意",
+        "refundStatus": 0,
+        "refundStatusDesc": "退款申请中",
+        "createTime": "2026-03-08 10:00:00",
+        "approveTime": null
+    }
+}
+```
+**异常场景：**
+- 订单不是已支付状态 → 返回 "order status does not support refund"
+- orderId 不存在 → 返回 "order not found"
+- userId 与订单不匹配 → 返回 "order not found"
+- 重复申请 → 复用已有退款单，返回相同退款信息
+
+#### 2. GET /api/refund/detail?userId=xxx&orderId=xxx —— 查询退款详情
+**预期响应（成功）：**
+```json
+{
+    "status": "success",
+    "code": 200,
+    "info": "请求成功",
+    "data": {
+        "refundId": "退款ID",
+        "refundNo": "R20260308xxxxxx123456",
+        "orderId": "订单ID",
+        "orderNo": "订单号",
+        "refundAmount": 199.00,
+        "refundReason": "商品不满意",
+        "refundStatus": 0,
+        "refundStatusDesc": "退款申请中",
+        "createTime": "2026-03-08 10:00:00",
+        "approveTime": null
+    }
+}
+```
+**异常场景：**
+- 没有退款记录 → 返回 "refund record not found"
+- userId 与订单不匹配 → 返回 "order not found"
+
+#### 3. POST /api/refund/approve —— 同意退款
+**请求体：**
+```json
+{
+    "refundId": "退款ID",
+    "userId": "用户ID"
+}
+```
+**预期响应（成功）：**
+```json
+{
+    "status": "success",
+    "code": 200,
+    "info": "请求成功",
+    "data": null
+}
+```
+**预期效果：**
+- 退款单状态变为 APPROVED(10)
+- 订单状态变为 REFUNDED(70)
+- 退款单 approveTime 被设置
+
+**异常场景：**
+- 退款单不是待处理状态 → 返回 "refund status does not support approval"
+- refundId 不存在 → 返回 "refund record not found"
+- userId 与退款单不匹配 → 返回 "refund does not belong to user"
+
+#### 4. POST /api/refund/reject —— 拒绝退款
+**请求体：**
+```json
+{
+    "refundId": "退款ID",
+    "userId": "用户ID"
+}
+```
+**预期响应（成功）：**
+```json
+{
+    "status": "success",
+    "code": 200,
+    "info": "请求成功",
+    "data": null
+}
+```
+**预期效果：**
+- 退款单状态变为 REJECTED(20)
+- 订单状态恢复为 PAID(10)
+- 退款单 approveTime 被设置
+
+**异常场景：**
+- 退款单不是待处理状态 → 返回 "refund status does not support rejection"
+- refundId 不存在 → 返回 "refund record not found"
+- userId 与退款单不匹配 → 返回 "refund does not belong to user"
+
 ### 验证记录
 - 执行命令：
   - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
