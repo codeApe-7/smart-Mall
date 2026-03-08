@@ -2385,3 +2385,41 @@ curl --location --request POST 'http://localhost:6061/api/knowledge/index/rebuil
 | ADMIN-KNOWLEDGE-REBUILD-04 | ES 不可用 | 无 | 返回 `code=501`，提示重建失败 |
 
 ---
+# Apifox 接口调试文档 - 管理后台 AI 服务监控
+
+以下内容对应功能导图与技术方案中的“AI 服务监控与配置调整”。
+
+> 推荐联调顺序：先调用一次智能助手对话和语义搜索，制造成功/回退事件 → 再调 `GET /ai-monitor/overview` 查看服务状态、降级统计和最近事件。
+
+## 63. 管理后台查询 AI 监控概览
+
+> 查询当前 AI 服务监控总览，包含聊天量、AI Agent 占比、今日活跃用户、服务状态、降级原因统计和最近监控事件。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/ai-monitor/overview`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/ai-monitor/overview'
+```
+
+### 成功断言
+- `code = 200`
+- `data.totalChatCount`、`data.aiAgentChatCount`、`data.ruleChatCount` 存在
+- `data.todayChatCount`、`data.todayActiveUserCount` 存在
+- `data.serviceStatuses` 至少包含 `assistant-agent`、`openai-model`、`mcp-tools`、`semantic-search`、`rag-product`
+- `data.fallbackStats` 返回最近 N 天的降级原因统计
+- `data.recentEvents` 返回最近运行期监控事件
+- `data.knowledgeIndexSummary` 返回索引概览信息
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-AI-MONITOR-01 | 查询监控概览 | 无 | 返回 `code=200`，监控概览结构完整 |
+| ADMIN-AI-MONITOR-02 | 智能助手关闭 | 后台配置关闭 `assistantConfig.enabled` 后查询 | 返回 `code=200`，`assistant-agent` 状态为 `DISABLED` |
+| ADMIN-AI-MONITOR-03 | 未配置 OpenAI Key | 清空 `OPENAI_API_KEY` 后查询 | 返回 `code=200`，`openai-model` 状态为 `DOWN` 或 `DISABLED`，提示未配置 |
+| ADMIN-AI-MONITOR-04 | MCP 不可达 | 修改 `mcp-url` 为无效地址后查询 | 返回 `code=200`，`mcp-tools` 状态为 `DOWN` |
+| ADMIN-AI-MONITOR-05 | ES 不可达 | 修改搜索地址或关闭 ES 后查询 | 返回 `code=200`，`semantic-search` 状态为 `DOWN` |
+| ADMIN-AI-MONITOR-06 | 有降级事件 | 先触发助手回退或语义搜索回退，再查询 | 返回 `code=200`，`fallbackStats` 与 `recentEvents` 中出现对应事件 |
+
+---

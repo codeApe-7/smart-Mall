@@ -32,6 +32,7 @@ import com.smartMall.service.ProductPropertyValueService;
 import com.smartMall.service.ProductSkuService;
 import com.smartMall.service.SysCategoryService;
 import com.smartMall.service.AiConfigService;
+import com.smartMall.service.AiMonitorEventService;
 import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -86,6 +87,9 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
 
     @Resource
     private AiConfigService aiConfigService;
+
+    @Resource
+    private AiMonitorEventService aiMonitorEventService;
 
     @Resource
     private ProductPropertyValueService productPropertyValueService;
@@ -381,6 +385,8 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
                     .build();
             try (Response response = okHttpClient.newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
+                    aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "http_status",
+                            "semantic search fallback by http status " + response.code(), null, null);
                     log.warn("semantic search fallback to db, httpStatus={}", response.code());
                     return null;
                 }
@@ -392,19 +398,27 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
                 long totalCount = extractSemanticSearchTotal(hitsJson);
                 List<String> productIds = extractSemanticProductIds(hitsJson);
                 if (productIds.isEmpty()) {
+                    aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "empty_result",
+                            "semantic search returned empty result", null, null);
                     log.info("semantic search returned empty result, fallback to db, keyword={}", queryDTO.getProductName());
                     return null;
                 }
                 List<ProductInfoListVO> records = loadVisibleProductListByIds(productIds);
                 if (records.isEmpty()) {
+                    aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "ids_not_found",
+                            "semantic search ids not found in db", null, null);
                     log.info("semantic search ids not found in db, fallback to db, keyword={}", queryDTO.getProductName());
                     return null;
                 }
+                aiMonitorEventService.recordEvent("semantic_search", "SUCCESS", "semantic_search_success",
+                        "semantic search succeeded", null, null);
                 log.info("semantic search success, keyword={}, totalCount={}, recordCount={}",
                         queryDTO.getProductName(), totalCount, records.size());
                 return new PageResultVO<>(queryDTO.getPageNo(), queryDTO.getPageSize(), totalCount, records);
             }
         } catch (Exception e) {
+            aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "exception",
+                    "semantic search fallback by exception: " + e.getClass().getSimpleName(), null, null);
             log.warn("semantic search fallback to db, keyword={}", queryDTO.getProductName(), e);
             return null;
         }

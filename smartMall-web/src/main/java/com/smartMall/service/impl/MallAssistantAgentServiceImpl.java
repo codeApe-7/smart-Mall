@@ -13,6 +13,7 @@ import com.smartMall.service.MallAssistantAgentService;
 import com.smartMall.service.MallAssistantService;
 import com.smartMall.service.ProductKnowledgeService;
 import com.smartMall.service.AiConfigService;
+import com.smartMall.service.AiMonitorEventService;
 import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -57,6 +58,9 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
     @Resource
     private AiConfigService aiConfigService;
 
+    @Resource
+    private AiMonitorEventService aiMonitorEventService;
+
     public MallAssistantAgentServiceImpl(ObjectProvider<ChatClient.Builder> chatClientBuilderProvider,
                                          ObjectProvider<ToolCallbackProvider> toolCallbackProvider) {
         this.chatClientBuilderProvider = chatClientBuilderProvider;
@@ -70,6 +74,8 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
         SmartMallAssistantAgentProperties properties = aiConfigService.getAssistantAgentConfig();
 
         if (!properties.isEnabled()) {
+            aiMonitorEventService.recordEvent("assistant_agent", "FALLBACK", "assistant_disabled",
+                    "assistant agent disabled, fallback to rule flow", dto.getUserId(), requestDTO.getSessionId());
             log.info("assistant agent disabled, fallback to rule flow, userId={}", dto.getUserId());
             return mallAssistantService.chat(requestDTO);
         }
@@ -77,6 +83,8 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
         ChatClient.Builder chatClientBuilder = chatClientBuilderProvider.getIfAvailable();
         ToolCallbackProvider callbackProvider = toolCallbackProvider.getIfAvailable();
         if (chatClientBuilder == null || callbackProvider == null || callbackProvider.getToolCallbacks().length == 0) {
+            aiMonitorEventService.recordEvent("assistant_agent", "FALLBACK", "dependencies_unavailable",
+                    "assistant agent dependencies unavailable", dto.getUserId(), requestDTO.getSessionId());
             log.info("assistant agent dependencies unavailable, fallback to rule flow, userId={}", dto.getUserId());
             return mallAssistantService.chat(requestDTO);
         }
@@ -92,10 +100,15 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
                     .content();
             AssistantChatResponseVO response = buildAgentResponse(requestDTO.getSessionId(), reply);
             mallAssistantService.recordChat(requestDTO, response);
+            aiMonitorEventService.recordEvent("assistant_agent", "SUCCESS", "agent_success",
+                    "assistant agent handled message successfully", dto.getUserId(), requestDTO.getSessionId());
             log.info("assistant agent handled message by spring ai, userId={}, sessionId={}",
                     requestDTO.getUserId(), requestDTO.getSessionId());
             return response;
         } catch (Exception e) {
+            aiMonitorEventService.recordEvent("assistant_agent", "FALLBACK", "invoke_failed",
+                    "assistant agent invoke failed: " + e.getClass().getSimpleName(),
+                    dto.getUserId(), requestDTO.getSessionId());
             log.warn("assistant agent invoke failed, fallback to rule flow, userId={}, sessionId={}",
                     requestDTO.getUserId(), requestDTO.getSessionId(), e);
             return mallAssistantService.chat(requestDTO);

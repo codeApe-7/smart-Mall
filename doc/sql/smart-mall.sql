@@ -240,3 +240,17 @@ CREATE TABLE `sys_ai_config` (
     UNIQUE KEY `uk_config_code` (`config_code`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='AI配置表';
 
+
+CREATE TABLE `ai_monitor_event` (
+    `event_id` varchar(32) NOT NULL COMMENT '事件ID',
+    `event_source` varchar(64) DEFAULT NULL COMMENT '事件来源',
+    `event_type` varchar(32) DEFAULT NULL COMMENT '事件类型',
+    `event_code` varchar(64) DEFAULT NULL COMMENT '事件编码',
+    `event_message` varchar(255) DEFAULT NULL COMMENT '事件说明',
+    `user_id` varchar(32) DEFAULT NULL COMMENT '用户ID',
+    `session_id` varchar(32) DEFAULT NULL COMMENT '会话ID',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`event_id`) USING BTREE,
+    KEY `idx_event_source_time` (`event_source`, `create_time`) USING BTREE,
+    KEY `idx_event_type_time` (`event_type`, `create_time`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='AI监控事件表';

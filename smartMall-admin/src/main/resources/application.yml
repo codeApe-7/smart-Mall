@@ -58,6 +58,12 @@ smart-mall:
         - ${SMART_MALL_AFTER_SALES_2:如遇质量问题可联系平台客服协助处理退款或换货。}
         - ${SMART_MALL_AFTER_SALES_3:默认工作时间内提供在线售后咨询与订单跟踪服务。}
   admin:
+    ai-monitor:
+      recent-days: ${SMART_MALL_ADMIN_AI_MONITOR_RECENT_DAYS:7}
+      recent-event-limit: ${SMART_MALL_ADMIN_AI_MONITOR_RECENT_EVENT_LIMIT:10}
+      openai-api-key: ${OPENAI_API_KEY:}
+      openai-base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      mcp-url: ${SMART_MALL_MCP_URL:http://127.0.0.1:8084}/mcp
     dashboard:
       trend-days: ${SMART_MALL_ADMIN_DASHBOARD_TREND_DAYS:7}
       low-stock-threshold: ${SMART_MALL_ADMIN_LOW_STOCK_THRESHOLD:10}

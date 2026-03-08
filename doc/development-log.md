@@ -1132,3 +1132,69 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：管理后台 RAG 知识库维护基础能力”。
+## 2026-03-08 功能点：管理后台 AI 服务监控基础能力
+
+### 本次目标
+- 补齐 AI 配置管理后的下一步建议，提供后台可直接查看的 AI 服务监控概览。
+- 覆盖智能助手、模型配置、MCP 连通性、语义搜索、商品知识增强等关键 AI 组件状态。
+- 记录运行期降级与成功事件，避免后台只能看到静态配置，看不到真实运行情况。
+
+### 本次实现
+- 在 `doc/sql/smart-mall.sql` 新增 `ai_monitor_event` 表：
+  - 存储 AI 运行期监控事件，包括来源、类型、事件编码、说明、用户与会话信息。
+- 在 `smartMall-common` 新增监控配置：
+  - `AdminAiMonitorProperties`
+  - 支持配置最近统计天数、最近事件条数、OpenAI 基础地址与 MCP 地址。
+- 在 `smartMall-common` 新增 AI 监控领域模型与服务：
+  - `AiMonitorEvent`
+  - `AiMonitorEventMapper`
+  - `AiMonitorEventService`
+  - `AiMonitorEventServiceImpl`
+  - `AdminAiMonitorService`
+  - `AdminAiMonitorServiceImpl`
+- 在 `smartMall-common` 新增监控 VO：
+  - `AdminAiMonitorOverviewVO`
+  - `AdminAiServiceStatusVO`
+  - `AdminAiMonitorMetricVO`
+  - `AdminAiMonitorRecentEventVO`
+- 在 `smartMall-admin` 新增 `AiMonitorController`：
+  - `GET /api/ai-monitor/overview`
+- 监控概览能力包括：
+  - 聊天总量、AI Agent 处理量、规则助手处理量、今日聊天量、今日活跃用户数、最近一条聊天时间
+  - 智能助手开关状态
+  - OpenAI 配置与基础地址可达性检查
+  - MCP 服务连通性检查
+  - Elasticsearch / 语义搜索可达性与商品知识增强状态
+  - 最近 N 天降级原因统计
+  - 最近监控事件列表
+- 运行期埋点：
+  - `MallAssistantAgentServiceImpl` 在智能助手关闭、依赖不可用、调用成功、调用异常回退时记录监控事件
+  - `ProductInfoServiceImpl` 在语义搜索成功与各类回退场景记录监控事件
+  - 监控事件写入失败时仅记录日志，不影响主业务流程
+- 更新 `smartMall-admin/src/main/resources/application.yml`：
+  - 增加 `smart-mall.admin.ai-monitor.*` 默认配置项
+- 更新 `apifox_requests.md`：
+  - 新增后台 AI 服务监控接口调试文档
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+- `smartMall-web`
+
+### 下一步建议
+- AI 监控能力完成后，按后台主线继续补齐用户账户与权限管理。
+- 若仍需增强 AI 侧，可继续补模型调用耗时、错误码分布、按日趋势图等更细颗粒度指标。
+- 若后续接入更多 Agent 工具，可将工具级成功率与异常率也纳入监控。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台 AI 服务监控基础能力”。
