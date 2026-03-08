@@ -1916,6 +1916,49 @@ curl --location --request GET 'http://localhost:6050/api/preference/profile?user
 
 ---
 
+# Apifox 接口调试文档 - 管理后台数据概览
+
+以下内容对应功能导图中的“管理后台首页 / 数据概览”。
+
+> 当前后台服务默认访问前缀为 `http://localhost:6061/api`。
+>
+> 推荐联调顺序：先准备订单、支付、退款、商品库存数据 → 调 `GET /dashboard/overview` → 校验汇总指标、近 7 日趋势、待发货订单和库存预警商品。
+
+## 48. 管理后台首页数据概览
+
+> 聚合后台首页需要的核心数据：
+> - 销售额、订单数、去重用户数
+> - 退款总额、退款单数、待处理退款数
+> - 近 7 日销售趋势、近 7 日退款趋势
+> - 待发货订单列表
+> - 库存不足预警商品列表
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/dashboard/overview`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/dashboard/overview'
+```
+
+### 成功断言
+- `code = 200`
+- `data.summary.totalSalesAmount`、`data.summary.totalOrderCount`、`data.summary.totalRefundAmount` 存在
+- `data.salesTrend` 与 `data.refundTrend` 默认各返回 7 条按日期升序排列的数据
+- `data.pendingShipmentOrders[*]` 包含 `orderId/orderNo/userId/totalAmount/payTime`
+- `data.lowStockProducts[*]` 包含 `productId/productName/totalStock/minPrice/totalSale`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-DASHBOARD-01 | 正常查询首页概览 | 无 | 返回 `code=200`，汇总指标、趋势数据、待发货订单和库存预警列表结构完整 |
+| ADMIN-DASHBOARD-02 | 无近 7 日销售数据 | 最近 7 日没有支付订单 | 返回 `code=200`，`salesTrend` 仍返回 7 条日期数据，金额和数量为 0 |
+| ADMIN-DASHBOARD-03 | 无退款数据 | 系统中没有退款单 | 返回 `code=200`，`refundTrend` 金额和数量为 0，`pendingRefundCount=0` |
+| ADMIN-DASHBOARD-04 | 无待发货订单 | 没有 `orderStatus=10` 的订单 | 返回 `code=200`，`pendingShipmentOrders=[]` |
+| ADMIN-DASHBOARD-05 | 无库存预警商品 | 所有在售商品库存均高于阈值 | 返回 `code=200`，`lowStockProducts=[]` |
+
+---
+
 ### 刷新用户偏好档案
 
 - **Method**: `POST`

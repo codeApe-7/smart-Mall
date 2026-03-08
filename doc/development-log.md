@@ -1,5 +1,62 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：管理后台首页数据概览基础能力
+
+### 本次目标
+- 按功能导图补齐管理后台首页“数据概览”能力。
+- 提供可直接给后台首页使用的统一接口，聚合销售、退款、待发货和库存预警数据。
+- 为后续管理后台订单管理、用户管理等功能提供首页入口和数据基线。
+
+### 本次实现
+- 在 `smartMall-common` 新增后台概览配置：
+  - `AdminDashboardProperties`
+- 在 `smartMall-common` 新增后台概览 VO：
+  - `AdminDashboardOverviewVO`
+  - `AdminDashboardSummaryVO`
+  - `AdminDashboardTrendVO`
+  - `AdminPendingShipmentOrderVO`
+  - `AdminLowStockProductVO`
+- 在 `smartMall-common` 新增后台概览 Service / ServiceImpl：
+  - `AdminDashboardService`
+  - `AdminDashboardServiceImpl`
+- 后台概览聚合内容包括：
+  - 销售总额、订单总数、按订单去重的用户数
+  - 退款总额、退款单数、待处理退款单数
+  - 近 N 天销售趋势（基于支付时间）
+  - 近 N 天退款趋势（基于退款申请时间）
+  - 待发货订单列表（`PAID` 状态）
+  - 在售商品库存预警列表（按 SKU 总库存聚合）
+- 在 `smartMall-admin` 新增 `DashboardController`：
+  - `GET /api/dashboard/overview`
+- 在 `smartMall-admin/src/main/resources/application.yml` 新增：
+  - `smart-mall.admin.dashboard.trend-days`
+  - `smart-mall.admin.dashboard.low-stock-threshold`
+  - `smart-mall.admin.dashboard.low-stock-limit`
+  - `smart-mall.admin.dashboard.pending-shipment-limit`
+- 更新 `apifox_requests.md`：
+  - 新增管理后台首页数据概览接口测试文档
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 继续补齐管理后台订单管理能力，例如待发货列表分页、退款审批列表、订单状态筛选查询。
+- 补充后台用户管理与系统设置能力，例如用户封禁/启用、提示词管理、RAG 配置维护。
+- 若后台首页需要继续增强，可补“热销商品排行”“分类销售分布”“近 7 日下单用户趋势”等看板数据。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：管理后台首页数据概览基础能力"。
+
 ## 2026-03-08 功能点：用户偏好关键交易节点自动刷新
 
 ### 本次目标
