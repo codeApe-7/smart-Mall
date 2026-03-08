@@ -1764,3 +1764,56 @@ curl --location --request POST 'http://localhost:8080/api/assistant/history' \
 | PRODUCT-SEMANTIC-02 | 语义检索按分类过滤 | 增加 `categoryIdOrPCategoryId` | 返回 `code=200`，结果仅包含对应分类商品 |
 | PRODUCT-SEMANTIC-03 | ES 未启用自动回退 | `SMART_MALL_SEMANTIC_SEARCH_ENABLED=false` | 返回 `code=200`，接口继续走数据库模糊搜索 |
 | PRODUCT-SEMANTIC-04 | ES 不可达自动回退 | 开启语义检索但 `SMART_MALL_ES_URL` 不可访问 | 返回 `code=200`，接口继续走数据库模糊搜索 |
+
+---
+
+## 45. 商品知识增强检索
+
+> 基于商品检索结果聚合卖点摘要、评价摘要和售后说明，返回可直接供 AI Agent / MCP 使用的商品知识卡片。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/product/knowledge/search`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "pageNo": 1,
+    "pageSize": 3,
+    "keyword": "适合学生的轻薄笔记本",
+    "semanticSearch": true
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.records[*].productId/productName/knowledgeText` 字段存在
+- `data.records[*].sellingPointSummary/reviewSummary/afterSalesSummary` 字段存在
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-KNOWLEDGE-01 | 按关键词检索知识卡片 | 自然语言商品需求 | 返回 `code=200`，知识卡片列表 |
+| PRODUCT-KNOWLEDGE-02 | 结合语义检索召回 | `semanticSearch=true` | 返回 `code=200`，优先复用语义检索结果 |
+| PRODUCT-KNOWLEDGE-03 | 指定分类过滤 | 增加 `categoryIdOrPCategoryId` | 返回 `code=200`，结果按分类过滤 |
+| PRODUCT-KNOWLEDGE-04 | 无匹配商品 | 不存在的关键词 | 返回 `code=200`，空列表 |
+
+---
+
+## 46. 商品知识详情
+
+> 按商品 ID 查询单个商品的知识增强卡片。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/product/knowledge/detail/p10001`
+
+### 成功断言
+- `code = 200`
+- `data.productId = p10001`
+- `data.knowledgeText` 为聚合后的知识文本
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-KNOWLEDGE-DETAIL-01 | 查询单商品知识卡片 | 有效 `productId` | 返回 `code=200`，知识详情完整 |
+| PRODUCT-KNOWLEDGE-DETAIL-02 | 商品不存在或已下架 | 无效 `productId` | 返回业务错误，提示商品不可用 |

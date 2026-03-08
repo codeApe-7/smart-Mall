@@ -626,3 +626,67 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：商品 Elasticsearch 语义检索与数据库回退基础能力”。
+
+## 2026-03-08 功能点：RAG 商品知识增强检索基础能力
+
+### 本次目标
+- 在商品语义检索基础上，补齐可供 AI Agent 和 MCP 工具直接使用的商品知识增强层。
+- 把商品卖点、评价摘要、售后说明组装成统一知识卡片，作为 RAG 检索结果返回。
+- 让智能购物 Agent 在处理商品问题时，自动带上知识增强上下文。
+
+### 本次实现
+- 在 `smartMall-common` 新增商品知识配置：
+  - `ProductKnowledgeProperties`
+- 新增商品知识 DTO / VO：
+  - `ProductKnowledgeQueryDTO`
+  - `ProductKnowledgeVO`
+- 新增商品知识服务：
+  - `ProductKnowledgeService`
+  - `ProductKnowledgeServiceImpl`
+- 商品知识服务能力包括：
+  - 基于现有商品搜索结果构建知识卡片
+  - 聚合商品描述与属性信息，生成卖点摘要
+  - 聚合商品评价分页结果，生成评价摘要与平均评分
+  - 统一输出售后说明、知识标签和 `knowledgeText`
+- 在 `smartMall-web` 新增商品知识接口：
+  - `POST /api/product/knowledge/search`
+  - `GET /api/product/knowledge/detail/{productId}`
+- 增强 `MallAssistantAgentServiceImpl`：
+  - 在商品相关提问场景中，自动追加商品知识增强上下文
+  - 有 `productId` 时优先加载单商品知识
+  - 无 `productId` 时按消息内容检索前 2 条知识卡片
+- 扩展 `smartMall-mcp` 工具：
+  - `search_product_knowledge`
+  - `get_product_knowledge`
+- 更新运行配置：
+  - `smartMall-web/src/main/resources/application.yml`
+  - `smartMall-mcp/src/main/resources/application.yml`
+  - 新增 `SMART_MALL_RAG_PRODUCT_ENABLED`
+  - 新增 `SMART_MALL_RAG_PRODUCT_PAGE_SIZE`
+  - 新增 `SMART_MALL_RAG_REVIEW_SNIPPET_COUNT`
+  - 新增 `SMART_MALL_RAG_PROPERTY_SNIPPET_COUNT`
+  - 新增 `SMART_MALL_AFTER_SALES_1/2/3`
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web,smartMall-mcp -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+- 说明：
+  - 本次测试文件仅用于本地验证，不纳入提交。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+- `smartMall-mcp`
+
+### 下一步建议
+- 为 AI Agent 输出补齐结构化商品比较能力，支持多个商品知识卡片并排比对。
+- 增加用户偏好记忆与历史偏好学习，把最近搜索、购买和评价行为纳入推荐上下文。
+- 补齐对话式发货模拟、退款审批、结构化评价提交的前端会话交互约束。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：RAG 商品知识增强检索基础能力”。

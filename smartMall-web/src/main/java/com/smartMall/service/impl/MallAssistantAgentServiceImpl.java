@@ -2,9 +2,13 @@ package com.smartMall.service.impl;
 
 import com.smartMall.config.SmartMallAssistantAgentProperties;
 import com.smartMall.entities.dto.AssistantChatRequestDTO;
+import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
 import com.smartMall.entities.vo.AssistantChatResponseVO;
+import com.smartMall.entities.vo.PageResultVO;
+import com.smartMall.entities.vo.ProductKnowledgeVO;
 import com.smartMall.service.MallAssistantAgentService;
 import com.smartMall.service.MallAssistantService;
+import com.smartMall.service.ProductKnowledgeService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +44,9 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
 
     @Resource
     private SmartMallAssistantAgentProperties properties;
+
+    @Resource
+    private ProductKnowledgeService productKnowledgeService;
 
     public MallAssistantAgentServiceImpl(ObjectProvider<ChatClient.Builder> chatClientBuilderProvider,
                                          ObjectProvider<ToolCallbackProvider> toolCallbackProvider) {
@@ -130,7 +137,39 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
             promptBuilder.append("评价条目数量：").append(dto.getReviews().size()).append('\n');
             promptBuilder.append("如果用户要求提交评价，请根据上下文判断并尽量利用可用工具先查询订单信息。").append('\n');
         }
+        String knowledgeContext = buildKnowledgeContext(dto);
+        if (StringTools.isNotEmpty(knowledgeContext)) {
+            promptBuilder.append("商品知识增强上下文：").append('\n');
+            promptBuilder.append(knowledgeContext).append('\n');
+        }
         promptBuilder.append("请根据上下文直接帮助用户完成商城操作。");
         return promptBuilder.toString();
+    }
+
+    private String buildKnowledgeContext(AssistantChatRequestDTO dto) {
+        try {
+            if (StringTools.isNotEmpty(dto.getProductId())) {
+                ProductKnowledgeVO knowledgeVO = productKnowledgeService.getKnowledgeDetail(dto.getProductId());
+                return knowledgeVO.getKnowledgeText();
+            }
+            if (StringTools.isEmpty(dto.getMessage()) || StringTools.isNotEmpty(dto.getOrderId())) {
+                return "";
+            }
+            ProductKnowledgeQueryDTO queryDTO = new ProductKnowledgeQueryDTO();
+            queryDTO.setKeyword(dto.getMessage());
+            queryDTO.setPageNo(1);
+            queryDTO.setPageSize(2);
+            PageResultVO<ProductKnowledgeVO> knowledgePage = productKnowledgeService.searchKnowledge(queryDTO);
+            if (knowledgePage.getRecords() == null || knowledgePage.getRecords().isEmpty()) {
+                return "";
+            }
+            return knowledgePage.getRecords().stream()
+                    .map(ProductKnowledgeVO::getKnowledgeText)
+                    .reduce((left, right) -> left + "\n---\n" + right)
+                    .orElse("");
+        } catch (Exception e) {
+            log.warn("load product knowledge context failed, userId={}, sessionId={}", dto.getUserId(), dto.getSessionId(), e);
+            return "";
+        }
     }
 }

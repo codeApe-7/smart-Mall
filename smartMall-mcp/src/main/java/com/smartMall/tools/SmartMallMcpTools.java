@@ -2,6 +2,7 @@ package com.smartMall.tools;
 
 import com.smartMall.entities.dto.ConfirmReceiveDTO;
 import com.smartMall.entities.dto.OrderCancelDTO;
+import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
 import com.smartMall.entities.dto.OrderQueryDTO;
 import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.RefundApplyDTO;
@@ -10,11 +11,13 @@ import com.smartMall.entities.vo.OrderInfoListVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
+import com.smartMall.entities.vo.ProductKnowledgeVO;
 import com.smartMall.entities.vo.ProductReviewVO;
 import com.smartMall.entities.vo.RefundInfoVO;
 import com.smartMall.entities.vo.ShippingInfoVO;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.ProductInfoService;
+import com.smartMall.service.ProductKnowledgeService;
 import com.smartMall.service.ProductReviewService;
 import com.smartMall.service.RefundInfoService;
 import com.smartMall.service.ShippingInfoService;
@@ -31,21 +34,32 @@ import java.util.List;
 public class SmartMallMcpTools {
 
     private final ProductInfoService productInfoService;
+    private final ProductKnowledgeService productKnowledgeService;
     private final OrderInfoService orderInfoService;
     private final RefundInfoService refundInfoService;
     private final ShippingInfoService shippingInfoService;
     private final ProductReviewService productReviewService;
 
     public SmartMallMcpTools(ProductInfoService productInfoService,
+                             ProductKnowledgeService productKnowledgeService,
                              OrderInfoService orderInfoService,
                              RefundInfoService refundInfoService,
                              ShippingInfoService shippingInfoService,
                              ProductReviewService productReviewService) {
         this.productInfoService = productInfoService;
+        this.productKnowledgeService = productKnowledgeService;
         this.orderInfoService = orderInfoService;
         this.refundInfoService = refundInfoService;
         this.shippingInfoService = shippingInfoService;
         this.productReviewService = productReviewService;
+    }
+
+    public SmartMallMcpTools(ProductInfoService productInfoService,
+                             OrderInfoService orderInfoService,
+                             RefundInfoService refundInfoService,
+                             ShippingInfoService shippingInfoService,
+                             ProductReviewService productReviewService) {
+        this(productInfoService, null, orderInfoService, refundInfoService, shippingInfoService, productReviewService);
     }
 
     @Tool(name = "search_visible_products", description = "Search visible products by keyword")
@@ -69,6 +83,23 @@ public class SmartMallMcpTools {
     public ProductInfoDetailVo getProductDetail(
             @ToolParam(description = "product id", required = true) String productId) {
         return productInfoService.getVisibleProductDetail(productId);
+    }
+
+    @Tool(name = "search_product_knowledge", description = "Search product knowledge cards by keyword")
+    public PageResultVO<ProductKnowledgeVO> searchProductKnowledge(
+            @ToolParam(description = "keyword for product knowledge search", required = true) String keyword,
+            @ToolParam(description = "page size", required = false) Integer pageSize) {
+        ProductKnowledgeQueryDTO queryDTO = new ProductKnowledgeQueryDTO();
+        queryDTO.setKeyword(keyword);
+        queryDTO.setPageNo(1);
+        queryDTO.setPageSize(pageSize == null || pageSize < 1 ? 3 : pageSize);
+        return productKnowledgeService.searchKnowledge(queryDTO);
+    }
+
+    @Tool(name = "get_product_knowledge", description = "Get product knowledge card by productId")
+    public ProductKnowledgeVO getProductKnowledge(
+            @ToolParam(description = "product id", required = true) String productId) {
+        return productKnowledgeService.getKnowledgeDetail(productId);
     }
 
     @Tool(name = "list_orders", description = "List orders of one user")
