@@ -2,6 +2,7 @@ package com.smartMall.tools;
 
 import com.smartMall.entities.dto.ConfirmReceiveDTO;
 import com.smartMall.entities.dto.OrderCancelDTO;
+import com.smartMall.entities.dto.ProductKnowledgeCompareDTO;
 import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
 import com.smartMall.entities.dto.OrderQueryDTO;
 import com.smartMall.entities.dto.ProductQueryDTO;
@@ -11,6 +12,7 @@ import com.smartMall.entities.vo.OrderInfoListVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
+import com.smartMall.entities.vo.ProductKnowledgeCompareVO;
 import com.smartMall.entities.vo.ProductKnowledgeVO;
 import com.smartMall.entities.vo.ProductReviewVO;
 import com.smartMall.entities.vo.RefundInfoVO;
@@ -25,6 +27,7 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -102,6 +105,18 @@ public class SmartMallMcpTools {
         return productKnowledgeService.getKnowledgeDetail(productId);
     }
 
+    @Tool(name = "compare_product_knowledge", description = "Compare multiple product knowledge cards")
+    public ProductKnowledgeCompareVO compareProductKnowledge(
+            @ToolParam(description = "keyword for compare search", required = false) String keyword,
+            @ToolParam(description = "comma separated product ids", required = false) String productIds,
+            @ToolParam(description = "max compare count", required = false) Integer maxCount) {
+        ProductKnowledgeCompareDTO compareDTO = new ProductKnowledgeCompareDTO();
+        compareDTO.setKeyword(keyword);
+        compareDTO.setMaxCount(maxCount);
+        compareDTO.setProductIds(parseProductIds(productIds));
+        return productKnowledgeService.compareKnowledge(compareDTO);
+    }
+
     @Tool(name = "list_orders", description = "List orders of one user")
     public PageResultVO<OrderInfoListVO> listOrders(
             @ToolParam(description = "user id", required = true) String userId,
@@ -168,5 +183,15 @@ public class SmartMallMcpTools {
             @ToolParam(description = "user id", required = true) String userId,
             @ToolParam(description = "order id", required = true) String orderId) {
         return productReviewService.getOrderReviews(userId, orderId);
+    }
+
+    private List<String> parseProductIds(String productIds) {
+        if (productIds == null || productIds.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(productIds.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isEmpty())
+                .toList();
     }
 }

@@ -690,3 +690,60 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：RAG 商品知识增强检索基础能力”。
+
+## 2026-03-08 功能点：AI Agent 结构化商品比较基础能力
+
+### 本次目标
+- 在现有商品知识卡片基础上，补齐可直接供 AI Agent 和 MCP 工具使用的结构化商品比较能力。
+- 支持按多个商品 ID 或自然语言关键词一次拉起多张知识卡片，并按价格、卖点、口碑、售后、标签并排比对。
+- 让智能购物 Agent 在“对比/比较/哪个好/vs”等商品决策场景下，自动携带结构化比较上下文。
+
+### 本次实现
+- 在 `smartMall-common` 新增商品比较 DTO / VO：
+  - `ProductKnowledgeCompareDTO`
+  - `ProductKnowledgeCompareVO`
+  - `ProductKnowledgeCompareDimensionVO`
+  - `ProductKnowledgeCompareCellVO`
+- 扩展 `ProductKnowledgeService` 与 `ProductKnowledgeServiceImpl`：
+  - 新增 `compareKnowledge`
+  - 支持按 `productIds` 直接比较
+  - 支持按 `keyword` 复用现有 RAG 知识检索结果，自动抽取前 N 个商品卡片进行比较
+  - 输出结构化维度行、推荐关注点、总结文案和可直接注入 Prompt 的 `comparisonText`
+- 扩展 `ProductKnowledgeProperties`：
+  - 新增 `maxCompareCount`
+- 在 `smartMall-web` 扩展商品知识接口：
+  - 新增 `POST /api/product/knowledge/compare`
+- 增强 `MallAssistantAgentServiceImpl`：
+  - 当用户消息包含“对比 / 比较 / 哪个好 / 怎么选 / 区别 / vs / pk”等关键词时
+  - 自动走商品知识结构化比较服务
+  - 将比较结果作为增强上下文注入 Spring AI Agent Prompt
+- 扩展 `smartMall-mcp` 工具：
+  - 新增 `compare_product_knowledge`
+- 更新运行配置：
+  - `smartMall-web/src/main/resources/application.yml`
+  - `smartMall-mcp/src/main/resources/application.yml`
+  - 新增 `SMART_MALL_RAG_COMPARE_COUNT`
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web,smartMall-mcp -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+- 说明：
+  - 本次未新增数据库表结构。
+  - 本次测试文件仅用于本地验证，不纳入提交。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+- `smartMall-mcp`
+
+### 下一步建议
+- 增加用户偏好记忆与历史偏好学习，把最近搜索、购买和评价行为纳入推荐上下文。
+- 继续补齐对话式发货模拟、退款审批、结构化评价提交的前端会话交互约束。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：AI Agent 结构化商品比较基础能力”。

@@ -22,6 +22,8 @@ public class ProductKnowledgeProperties {
 
     private Integer maxPropertySnippetCount = 4;
 
+    private Integer maxCompareCount = 3;
+
     private List<String> afterSalesHighlights = List.of(
             "支持7天无理由退货，商品保持完好可申请售后。",
             "如遇质量问题可联系平台客服协助处理退款或换货。",

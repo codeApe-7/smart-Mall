@@ -51,6 +51,7 @@ smart-mall:
       default-page-size: ${SMART_MALL_RAG_PRODUCT_PAGE_SIZE:3}
       max-review-snippet-count: ${SMART_MALL_RAG_REVIEW_SNIPPET_COUNT:3}
       max-property-snippet-count: ${SMART_MALL_RAG_PROPERTY_SNIPPET_COUNT:4}
+      max-compare-count: ${SMART_MALL_RAG_COMPARE_COUNT:3}
       after-sales-highlights:
         - ${SMART_MALL_AFTER_SALES_1:支持7天无理由退货，商品保持完好可申请售后。}
         - ${SMART_MALL_AFTER_SALES_2:如遇质量问题可联系平台客服协助处理退款或换货。}

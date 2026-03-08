@@ -2,7 +2,9 @@ package com.smartMall.service.impl;
 
 import com.smartMall.config.SmartMallAssistantAgentProperties;
 import com.smartMall.entities.dto.AssistantChatRequestDTO;
+import com.smartMall.entities.dto.ProductKnowledgeCompareDTO;
 import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
+import com.smartMall.entities.vo.ProductKnowledgeCompareVO;
 import com.smartMall.entities.vo.AssistantChatResponseVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ProductKnowledgeVO;
@@ -31,6 +33,7 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
 
     private static final String AI_AGENT_INTENT = "AI_AGENT";
     private static final String AI_AGENT_DESC = "spring ai agent";
+    private static final List<String> COMPARE_KEYWORDS = List.of("对比", "比较", "哪个好", "怎么选", "区别", "vs", "VS", "pk", "PK");
     private static final List<String> DEFAULT_SUGGESTIONS = List.of(
             "建议：继续告诉我你想买什么类型的商品",
             "建议：直接输入订单号查询订单详情",
@@ -148,6 +151,10 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
 
     private String buildKnowledgeContext(AssistantChatRequestDTO dto) {
         try {
+            String comparisonContext = buildComparisonContext(dto);
+            if (StringTools.isNotEmpty(comparisonContext)) {
+                return comparisonContext;
+            }
             if (StringTools.isNotEmpty(dto.getProductId())) {
                 ProductKnowledgeVO knowledgeVO = productKnowledgeService.getKnowledgeDetail(dto.getProductId());
                 return knowledgeVO.getKnowledgeText();
@@ -171,5 +178,24 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
             log.warn("load product knowledge context failed, userId={}, sessionId={}", dto.getUserId(), dto.getSessionId(), e);
             return "";
         }
+    }
+
+    private String buildComparisonContext(AssistantChatRequestDTO dto) {
+        if (StringTools.isEmpty(dto.getMessage()) || StringTools.isNotEmpty(dto.getProductId())
+                || StringTools.isNotEmpty(dto.getOrderId()) || !requiresComparisonContext(dto.getMessage())) {
+            return "";
+        }
+        ProductKnowledgeCompareDTO compareDTO = new ProductKnowledgeCompareDTO();
+        compareDTO.setKeyword(dto.getMessage());
+        compareDTO.setMaxCount(3);
+        ProductKnowledgeCompareVO compareVO = productKnowledgeService.compareKnowledge(compareDTO);
+        if (!Boolean.TRUE.equals(compareVO.getComparable())) {
+            return "";
+        }
+        return compareVO.getComparisonText();
+    }
+
+    private boolean requiresComparisonContext(String message) {
+        return COMPARE_KEYWORDS.stream().anyMatch(message::contains);
     }
 }

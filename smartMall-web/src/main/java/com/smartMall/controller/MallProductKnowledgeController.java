@@ -1,7 +1,9 @@
 package com.smartMall.controller;
 
+import com.smartMall.entities.dto.ProductKnowledgeCompareDTO;
 import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
 import com.smartMall.entities.vo.PageResultVO;
+import com.smartMall.entities.vo.ProductKnowledgeCompareVO;
 import com.smartMall.entities.vo.ProductKnowledgeVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.service.ProductKnowledgeService;
@@ -36,5 +38,12 @@ public class MallProductKnowledgeController {
     public ResponseVO<ProductKnowledgeVO> detail(@PathVariable String productId) {
         log.info("web load product knowledge detail, productId={}", productId);
         return ResponseVO.success(productKnowledgeService.getKnowledgeDetail(productId));
+    }
+
+    @PostMapping("/compare")
+    public ResponseVO<ProductKnowledgeCompareVO> compare(@RequestBody(required = false) ProductKnowledgeCompareDTO dto) {
+        ProductKnowledgeCompareDTO safeQuery = dto == null ? new ProductKnowledgeCompareDTO() : dto;
+        log.info("web compare product knowledge, keyword={}, productIds={}", safeQuery.getKeyword(), safeQuery.getProductIds());
+        return ResponseVO.success(productKnowledgeService.compareKnowledge(safeQuery));
     }
 }

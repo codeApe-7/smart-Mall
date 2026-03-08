@@ -1817,3 +1817,46 @@ curl --location --request POST 'http://localhost:8080/api/assistant/history' \
 | --- | --- | --- | --- |
 | PRODUCT-KNOWLEDGE-DETAIL-01 | 查询单商品知识卡片 | 有效 `productId` | 返回 `code=200`，知识详情完整 |
 | PRODUCT-KNOWLEDGE-DETAIL-02 | 商品不存在或已下架 | 无效 `productId` | 返回业务错误，提示商品不可用 |
+
+---
+
+## 47. 商品知识结构化对比
+> 基于多个商品 ID 或自然语言关键词，聚合多张商品知识卡片并输出结构化对比结果，供前端、AI Agent 和 MCP 工具直接复用。
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/product/knowledge/compare`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "productIds": [
+        "p10001",
+        "p10002",
+        "p10003"
+    ],
+    "maxCount": 3
+}
+```
+
+### Body 示例 (关键词比较)
+```json
+{
+    "keyword": "对比适合学生的轻薄笔记本和高续航办公本",
+    "maxCount": 3,
+    "semanticSearch": true
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.products` 返回参与比较的商品知识卡片列表
+- `data.dimensions[*].dimensionKey/dimensionName/values` 字段存在
+- `data.compareSummary` 与 `data.comparisonText` 字段存在
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-KNOWLEDGE-COMPARE-01 | 按多个商品ID对比 | 有效 `productIds` 2-3 个 | 返回 `code=200`，`data.comparable=true`，维度行完整 |
+| PRODUCT-KNOWLEDGE-COMPARE-02 | 按自然语言关键词对比 | `keyword` 包含“对比/哪个好/vs”等比较诉求 | 返回 `code=200`，自动抽取多款商品生成比较结果 |
+| PRODUCT-KNOWLEDGE-COMPARE-03 | 仅匹配到 1 款商品 | `keyword` 较窄或只传单个商品ID | 返回 `code=200`，`data.comparable=false` 或仅单商品结果，并提示补充条件 |
+| PRODUCT-KNOWLEDGE-COMPARE-04 | 无匹配商品 | 不存在的关键词或空商品ID集合 | 返回 `code=200`，`data.products` 为空，给出无法比较提示 |

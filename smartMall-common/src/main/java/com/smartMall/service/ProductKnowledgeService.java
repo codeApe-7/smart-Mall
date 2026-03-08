@@ -1,7 +1,9 @@
 package com.smartMall.service;
 
+import com.smartMall.entities.dto.ProductKnowledgeCompareDTO;
 import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
 import com.smartMall.entities.vo.PageResultVO;
+import com.smartMall.entities.vo.ProductKnowledgeCompareVO;
 import com.smartMall.entities.vo.ProductKnowledgeVO;
 
 /**
@@ -12,4 +14,6 @@ public interface ProductKnowledgeService {
     PageResultVO<ProductKnowledgeVO> searchKnowledge(ProductKnowledgeQueryDTO dto);
 
     ProductKnowledgeVO getKnowledgeDetail(String productId);
+
+    ProductKnowledgeCompareVO compareKnowledge(ProductKnowledgeCompareDTO dto);
 }
