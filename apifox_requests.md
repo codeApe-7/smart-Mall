@@ -1164,3 +1164,139 @@ curl --location --request POST 'http://localhost:8080/api/shipping/confirmReceiv
 | SHIPPING-RECEIVE-03 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
 | SHIPPING-RECEIVE-04 | userId 与订单不匹配 | 他人 `userId` | 返回 `code=405`，提示 `order not found` |
 | SHIPPING-RECEIVE-05 | 缺少 `orderId` | `orderId=""` | 返回 `code=601`，提示 `orderId can not be blank` |
+
+---
+
+## 30. 提交商品评价
+
+> 对已收货订单的订单项提交评价（评分 + 评价内容），全部订单项评价完成后订单自动推进到"已完成"状态。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/review/submit`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "reviews": [
+        {
+            "itemId": "item001",
+            "productId": "p10001",
+            "rating": 5,
+            "content": "质量很好，物流很快！"
+        },
+        {
+            "itemId": "item002",
+            "productId": "p10002",
+            "rating": 4,
+            "content": "还不错"
+        }
+    ]
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/review/submit' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "reviews": [
+        {
+            "itemId": "item001",
+            "productId": "p10001",
+            "rating": 5,
+            "content": "质量很好，物流很快！"
+        }
+    ]
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 返回评价列表，每条包含 `reviewId`、`rating`、`content`、`productName`、`createTime`
+- 全部订单项评价完成时，订单状态推进到 `30`（已完成）
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| REVIEW-SUBMIT-01 | 正常提交评价 | 已收货订单 + 有效订单项 | 返回 `code=200`，评价创建成功 |
+| REVIEW-SUBMIT-02 | 全部订单项评价完成 | 提交最后一个未评价项 | 返回 `code=200`，订单状态推进到 `30`（已完成） |
+| REVIEW-SUBMIT-03 | 订单不是已收货状态 | 传待支付或已发货订单 | 返回 `code=501`，提示 `order status does not support review` |
+| REVIEW-SUBMIT-04 | 重复评价同一订单项 | 已评价过的 `itemId` | 返回 `code=501`，提示 `order item already reviewed` |
+| REVIEW-SUBMIT-05 | 订单项不存在 | 无效 `itemId` | 返回 `code=405`，提示 `order item not found` |
+| REVIEW-SUBMIT-06 | productId 不匹配 | itemId 对应的商品不是传入的 productId | 返回 `code=601`，提示 `productId mismatch` |
+| REVIEW-SUBMIT-07 | 评分超出范围 | `rating=0` 或 `rating=6` | 返回 `code=601`，提示 `rating must be between 1 and 5` |
+| REVIEW-SUBMIT-08 | 缺少 reviews | `reviews=[]` | 返回 `code=601`，提示 `reviews can not be empty` |
+
+---
+
+## 31. 查询订单评价
+
+> 查询某用户某订单下的全部评价记录。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/review/orderReviews?userId=u10001&orderId=o10001`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:8080/api/review/orderReviews?userId=u10001&orderId=o10001'
+```
+
+### 成功断言
+- `code = 200`
+- 返回评价列表，每条包含 `reviewId`、`itemId`、`productId`、`productName`、`rating`、`content`、`createTime`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| REVIEW-ORDER-01 | 正常查询 | 已有评价的订单 | 返回 `code=200`，评价列表 |
+| REVIEW-ORDER-02 | 订单无评价 | 未评价的订单 | 返回 `code=200`，空列表 |
+| REVIEW-ORDER-03 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
+| REVIEW-ORDER-04 | 缺少参数 | `userId` 或 `orderId` 为空 | 返回 `code=601`，提示参数缺失 |
+
+---
+
+## 32. 查询商品评价（分页）
+
+> 分页查询某商品的全部评价记录，按时间倒序排列。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/review/productReviews`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "productId": "p10001",
+    "pageNo": 1,
+    "pageSize": 10
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:8080/api/review/productReviews' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "productId": "p10001",
+    "pageNo": 1,
+    "pageSize": 10
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 返回分页结构：`pageNo`、`pageSize`、`totalCount`、`totalPages`、`records`
+- `records` 中每条包含 `reviewId`、`productId`、`userId`、`rating`、`content`、`createTime`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| REVIEW-PRODUCT-01 | 正常分页查询 | 标准请求体 | 返回 `code=200`，分页评价列表 |
+| REVIEW-PRODUCT-02 | 商品无评价 | 无评价记录的商品 | 返回 `code=200`，空 `records` |
+| REVIEW-PRODUCT-03 | 分页第二页 | `pageNo=2` | 返回 `code=200`，第二页数据或空 |
+| REVIEW-PRODUCT-04 | 缺少 productId | `productId=""` | 返回 `code=601`，提示 `productId can not be blank` |

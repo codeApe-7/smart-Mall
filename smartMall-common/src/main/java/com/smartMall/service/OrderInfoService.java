@@ -42,4 +42,6 @@ public interface OrderInfoService extends IService<OrderInfo> {
     void markOrderShipped(String orderId, Date shipTime);
 
     void markOrderReceived(String orderId, Date receiveTime);
+
+    void markOrderCompleted(String orderId, Date completeTime);
 }

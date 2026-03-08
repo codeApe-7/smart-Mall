@@ -95,6 +95,7 @@ CREATE TABLE `order_info` (
     `refund_time` datetime DEFAULT NULL COMMENT '退款时间',
     `ship_time` datetime DEFAULT NULL COMMENT '发货时间',
     `receive_time` datetime DEFAULT NULL COMMENT '收货时间',
+    `complete_time` datetime DEFAULT NULL COMMENT '完成时间',
     PRIMARY KEY (`order_id`) USING BTREE,
     UNIQUE KEY `uk_order_no` (`order_no`) USING BTREE,
     KEY `idx_user_id_status` (`user_id`, `order_status`) USING BTREE
@@ -176,3 +177,20 @@ CREATE TABLE `shipping_info` (
     KEY `idx_order_id` (`order_id`) USING BTREE,
     KEY `idx_user_id` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='物流记录表';
+
+
+CREATE TABLE `product_review` (
+    `review_id` varchar(32) NOT NULL COMMENT '评价ID',
+    `order_id` varchar(32) NOT NULL COMMENT '订单ID',
+    `item_id` varchar(32) NOT NULL COMMENT '订单项ID',
+    `product_id` varchar(32) NOT NULL COMMENT '商品ID',
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `rating` int(11) NOT NULL COMMENT '评分(1-5)',
+    `content` text COMMENT '评价内容',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`review_id`) USING BTREE,
+    UNIQUE KEY `uk_item_id` (`item_id`) USING BTREE,
+    KEY `idx_order_id` (`order_id`) USING BTREE,
+    KEY `idx_product_id` (`product_id`) USING BTREE,
+    KEY `idx_user_id` (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='商品评价表';

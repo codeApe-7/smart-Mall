@@ -295,6 +295,30 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         log.info("mark order received, orderId={}", orderId);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markOrderCompleted(String orderId, Date completeTime) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (OrderStatusEnum.COMPLETED.getStatus().equals(orderInfo.getOrderStatus())) {
+            return;
+        }
+        if (!OrderStatusEnum.RECEIVED.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support completing");
+        }
+        Date now = completeTime == null ? new Date() : completeTime;
+        orderInfo.setOrderStatus(OrderStatusEnum.COMPLETED.getStatus());
+        orderInfo.setCompleteTime(now);
+        orderInfo.setUpdateTime(now);
+        this.updateById(orderInfo);
+        log.info("mark order completed, orderId={}", orderId);
+    }
+
     private List<ShoppingCartItemVO> loadSelectedCartItems(String userId, List<String> cartIds, boolean requireAvailable) {
         validateUserId(userId);
         if (cartIds == null || cartIds.isEmpty()) {

@@ -1,5 +1,64 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：用户端商品评价与订单完成
+
+### 本次目标
+- 补齐已收货订单的商品评价能力。
+- 支持按订单项逐一评价（评分 + 评价内容），全部评价完成后订单自动推进到"已完成"状态。
+- 提供订单评价查询、商品评价分页查询接口。
+- 为后续智能购物模式中的对话式商品推荐提供评价数据基础。
+
+### 本次实现
+- 在 `smartMall-common` 新增评价领域模型：
+  - `ProductReview` 商品评价实体
+- 新增评价 DTO：
+  - `ReviewItemDTO` 单条评价项入参
+  - `ReviewSubmitDTO` 批量提交评价入参
+  - `ReviewQueryDTO` 商品评价查询入参（含分页）
+- 新增评价 VO：
+  - `ProductReviewVO` 评价信息视图
+- 新增评价 Mapper / Service / ServiceImpl：
+  - `ProductReviewMapper`
+  - `ProductReviewService`
+  - `ProductReviewServiceImpl`
+- 在 `smartMall-web` 新增 `MallReviewController`，提供接口：
+  - `POST /api/review/submit` 提交评价
+  - `GET /api/review/orderReviews?userId=xxx&orderId=xxx` 查询订单评价
+  - `POST /api/review/productReviews` 查询商品评价（分页）
+- 评价能力已支持：
+  - 仅已收货（RECEIVED）订单可提交评价。
+  - 每个订单项只能评价一次，重复评价时报错。
+  - 评分范围 1-5 星，评价内容可选。
+  - 提交时校验 itemId 和 productId 归属关系。
+  - 当订单全部订单项评价完成后，订单状态自动推进到"已完成"（COMPLETED）。
+- 扩展 `OrderInfo` 新增 `completeTime` 字段，`OrderDetailVO` 同步回显。
+- 在 `OrderInfoService` / `OrderInfoServiceImpl` 新增：
+  - `markOrderCompleted` 标记订单为已完成
+- 在 `doc/sql/smart-mall.sql` 追加：
+  - `order_info.complete_time` 字段
+  - `product_review` 表结构
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 衔接智能购物模式：WebSocket 对话接入、Spring AI + RAG 商品检索、MCP 工具集成。
+- 或补充管理后台功能：数据概览、商品管理、订单管理。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：用户端商品评价与订单完成"。
+
 ## 2026-03-08 功能点：用户端发货模拟与确认收货
 
 ### 本次目标
