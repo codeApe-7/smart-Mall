@@ -31,6 +31,7 @@ import com.smartMall.service.ProductInfoService;
 import com.smartMall.service.ProductPropertyValueService;
 import com.smartMall.service.ProductSkuService;
 import com.smartMall.service.SysCategoryService;
+import com.smartMall.service.AiConfigService;
 import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -81,10 +82,10 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
             .build();
 
     @Resource
-    private ProductSearchProperties productSearchProperties = new ProductSearchProperties();
+    private UserPreferenceProperties userPreferenceProperties = new UserPreferenceProperties();
 
     @Resource
-    private UserPreferenceProperties userPreferenceProperties = new UserPreferenceProperties();
+    private AiConfigService aiConfigService;
 
     @Resource
     private ProductPropertyValueService productPropertyValueService;
@@ -365,16 +366,17 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
     }
 
     private boolean shouldUseSemanticSearch(ProductQueryDTO queryDTO) {
-        return productSearchProperties.isSemanticEnabled()
+        return aiConfigService.getProductSearchConfig().isSemanticEnabled()
                 && !Boolean.FALSE.equals(queryDTO.getSemanticSearch())
                 && StringTools.isNotEmpty(queryDTO.getProductName());
     }
 
     private PageResultVO<ProductInfoListVO> loadVisibleProductListBySemanticSearch(ProductQueryDTO queryDTO) {
         try {
-            JSONObject requestJson = buildSemanticSearchRequest(queryDTO);
+            ProductSearchProperties productSearchProperties = aiConfigService.getProductSearchConfig();
+            JSONObject requestJson = buildSemanticSearchRequest(queryDTO, productSearchProperties);
             Request request = new Request.Builder()
-                    .url(buildElasticsearchSearchUrl())
+                    .url(buildElasticsearchSearchUrl(productSearchProperties))
                     .post(RequestBody.create(requestJson.toJSONString(), JSON_MEDIA_TYPE))
                     .build();
             try (Response response = okHttpClient.newCall(request).execute()) {
@@ -408,10 +410,11 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         }
     }
 
-    private JSONObject buildSemanticSearchRequest(ProductQueryDTO queryDTO) {
+    private JSONObject buildSemanticSearchRequest(ProductQueryDTO queryDTO,
+                                                  ProductSearchProperties productSearchProperties) {
         JSONObject root = new JSONObject();
         root.put("from", queryDTO.getOffset());
-        root.put("size", normalizeSemanticCandidateSize(queryDTO.getPageSize()));
+        root.put("size", normalizeSemanticCandidateSize(queryDTO.getPageSize(), productSearchProperties));
         root.put("track_total_hits", true);
 
         JSONArray sourceFields = new JSONArray();
@@ -452,7 +455,7 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         return root;
     }
 
-    private String buildElasticsearchSearchUrl() {
+    private String buildElasticsearchSearchUrl(ProductSearchProperties productSearchProperties) {
         String uri = productSearchProperties.getElasticsearchUri();
         if (StringTools.isEmpty(uri)) {
             uri = "http://127.0.0.1:9200";
@@ -464,7 +467,8 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         return normalizedUri + "/" + productSearchProperties.getProductIndexName() + "/_search";
     }
 
-    private int normalizeSemanticCandidateSize(Integer pageSize) {
+    private int normalizeSemanticCandidateSize(Integer pageSize,
+                                               ProductSearchProperties productSearchProperties) {
         int basePageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
         int candidateSize = productSearchProperties.getSemanticCandidateSize() == null
                 ? basePageSize : productSearchProperties.getSemanticCandidateSize();

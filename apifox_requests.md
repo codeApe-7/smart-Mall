@@ -2160,3 +2160,116 @@ curl --location --request POST 'http://localhost:6050/api/preference/refresh?use
 | PREFERENCE-REFRESH-01 | 首次刷新 | `userId=u10001`（无已有偏好记录） | 返回 `code=200`，新建偏好记录，`data.preferenceId` 不为空 |
 | PREFERENCE-REFRESH-02 | 再次刷新 | `userId=u10001`（已有偏好记录） | 返回 `code=200`，更新偏好记录，`data.updateTime` 变化 |
 | PREFERENCE-REFRESH-03 | 无行为数据 | `userId=u99999` | 返回 `code=200`，生成空偏好档案 |
+# Apifox 接口调试文档 - 管理后台 AI 配置管理
+
+以下内容对应功能导图与技术方案中的“AI 配置管理”。
+
+> 推荐联调顺序：先调 `GET /ai-config/detail` 获取当前生效配置 → 修改提示词或 RAG 参数 → 调 `POST /ai-config/save` 保存 → 再验证首页商品知识问答或智能助手对话结果是否按新配置生效。
+
+## 57. 管理后台查询 AI 配置详情
+
+> 查询当前后台可维护的 AI 配置，包含智能助手开关与提示词、商品语义搜索配置、商品知识增强配置。未在数据库保存时回退默认配置。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/ai-config/detail`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/ai-config/detail'
+```
+
+### 成功断言
+- `code = 200`
+- `data.assistantConfig.enabled`、`data.assistantConfig.systemPrompt` 存在
+- `data.productSearchConfig.elasticsearchUri`、`data.productSearchConfig.productIndexName` 存在
+- `data.productKnowledgeConfig.defaultPageSize`、`data.productKnowledgeConfig.afterSalesHighlights` 存在
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-AI-CONFIG-DETAIL-01 | 查询当前 AI 配置 | 无 | 返回 `code=200`，三组配置结构完整 |
+| ADMIN-AI-CONFIG-DETAIL-02 | 数据库无覆盖配置 | 清空 `sys_ai_config` 后查询 | 返回 `code=200`，字段回退到默认配置 |
+| ADMIN-AI-CONFIG-DETAIL-03 | 数据库已有覆盖配置 | 先保存一组新配置后查询 | 返回 `code=200`，字段值与最近一次保存结果一致 |
+
+## 58. 管理后台保存 AI 配置
+
+> 保存后台 AI 配置。支持一次性更新智能助手提示词、商品语义搜索参数和商品知识增强参数，运行时优先读取数据库配置。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/ai-config/save`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+  "assistantConfig": {
+    "enabled": true,
+    "systemPrompt": "你是 SmartMall 智能购物助手，请优先结合商品知识和订单工具回答。"
+  },
+  "productSearchConfig": {
+    "semanticEnabled": true,
+    "elasticsearchUri": "http://127.0.0.1:9200",
+    "productIndexName": "smart_mall_product",
+    "semanticCandidateSize": 80
+  },
+  "productKnowledgeConfig": {
+    "enabled": true,
+    "defaultPageSize": 3,
+    "maxReviewSnippetCount": 4,
+    "maxPropertySnippetCount": 5,
+    "maxCompareCount": 3,
+    "afterSalesHighlights": [
+      "支持7天无理由退货。",
+      "质量问题可联系平台客服处理退款或换货。",
+      "工作时间内提供在线售后咨询。"
+    ]
+  }
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/ai-config/save' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "assistantConfig": {
+    "enabled": true,
+    "systemPrompt": "你是 SmartMall 智能购物助手，请优先结合商品知识和订单工具回答。"
+  },
+  "productSearchConfig": {
+    "semanticEnabled": true,
+    "elasticsearchUri": "http://127.0.0.1:9200",
+    "productIndexName": "smart_mall_product",
+    "semanticCandidateSize": 80
+  },
+  "productKnowledgeConfig": {
+    "enabled": true,
+    "defaultPageSize": 3,
+    "maxReviewSnippetCount": 4,
+    "maxPropertySnippetCount": 5,
+    "maxCompareCount": 3,
+    "afterSalesHighlights": [
+      "支持7天无理由退货。",
+      "质量问题可联系平台客服处理退款或换货。",
+      "工作时间内提供在线售后咨询。"
+    ]
+  }
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 数据库 `sys_ai_config` 中存在 `assistant_agent`、`product_search`、`product_knowledge` 三类配置记录
+- 随后再次调用 `GET /api/ai-config/detail`，返回值与刚保存的配置一致
+- Web 端智能助手和商品知识服务会优先使用该配置
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-AI-CONFIG-SAVE-01 | 正常保存全量 AI 配置 | 标准请求体 | 返回 `code=200`，三类配置都成功落库 |
+| ADMIN-AI-CONFIG-SAVE-02 | 仅调整提示词 | 只修改 `assistantConfig.systemPrompt` | 返回 `code=200`，再次查询时提示词为最新值 |
+| ADMIN-AI-CONFIG-SAVE-03 | 关闭语义搜索 | `productSearchConfig.semanticEnabled=false` | 返回 `code=200`，再次查询时语义搜索开关关闭 |
+| ADMIN-AI-CONFIG-SAVE-04 | 调大候选数与摘要数量 | 修改 `semanticCandidateSize`、`maxReviewSnippetCount` | 返回 `code=200`，再次查询时参数为新值 |
+| ADMIN-AI-CONFIG-SAVE-05 | 传空售后亮点列表 | `afterSalesHighlights=[]` | 返回 `code=200`，服务端回退保留原有或默认售后亮点 |
+
+---

@@ -1,6 +1,6 @@
 package com.smartMall.service.impl;
 
-import com.smartMall.config.SmartMallAssistantAgentProperties;
+import com.smartMall.entities.config.SmartMallAssistantAgentProperties;
 import com.smartMall.entities.dto.AssistantChatRequestDTO;
 import com.smartMall.entities.dto.ProductKnowledgeCompareDTO;
 import com.smartMall.entities.dto.ProductKnowledgeQueryDTO;
@@ -12,6 +12,7 @@ import com.smartMall.entities.vo.UserPreferenceVO;
 import com.smartMall.service.MallAssistantAgentService;
 import com.smartMall.service.MallAssistantService;
 import com.smartMall.service.ProductKnowledgeService;
+import com.smartMall.service.AiConfigService;
 import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
@@ -48,13 +49,13 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
     private MallAssistantService mallAssistantService;
 
     @Resource
-    private SmartMallAssistantAgentProperties properties;
-
-    @Resource
     private ProductKnowledgeService productKnowledgeService;
 
     @Resource
     private UserPreferenceService userPreferenceService;
+
+    @Resource
+    private AiConfigService aiConfigService;
 
     public MallAssistantAgentServiceImpl(ObjectProvider<ChatClient.Builder> chatClientBuilderProvider,
                                          ObjectProvider<ToolCallbackProvider> toolCallbackProvider) {
@@ -66,6 +67,7 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
     public AssistantChatResponseVO chat(AssistantChatRequestDTO dto) {
         AssistantChatRequestDTO requestDTO = copyRequest(dto);
         requestDTO.setSessionId(normalizeSessionId(dto.getSessionId()));
+        SmartMallAssistantAgentProperties properties = aiConfigService.getAssistantAgentConfig();
 
         if (!properties.isEnabled()) {
             log.info("assistant agent disabled, fallback to rule flow, userId={}", dto.getUserId());

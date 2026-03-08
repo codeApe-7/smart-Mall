@@ -1027,3 +1027,57 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：AI Agent 结构化商品比较基础能力”。
+## 2026-03-08 功能点：管理后台 AI 配置管理基础能力
+
+### 本次目标
+- 按功能导图与技术方案补齐管理后台“AI 配置管理”基础能力。
+- 提供智能助手提示词、商品语义搜索和商品知识增强配置的统一查询/保存入口。
+- 让后台保存的 AI 配置能直接影响 Web 端 Spring AI Agent 与商品知识服务运行时行为，而不是只做静态展示。
+
+### 本次实现
+- 在 `doc/sql/smart-mall.sql` 新增 `sys_ai_config` 表：
+  - 存储后台维护的 AI 配置快照，按 `assistant_agent`、`product_search`、`product_knowledge` 三类配置分组。
+- 在 `smartMall-common` 新增 AI 配置领域模型与服务：
+  - `SysAiConfig`
+  - `SysAiConfigMapper`
+  - `AdminAiConfigSaveDTO`
+  - `AdminAiConfigVO`
+  - `AiConfigService`
+  - `AiConfigServiceImpl`
+- 在 `smartMall-common` 新增共享配置类：
+  - `SmartMallAssistantAgentProperties`
+  - 将智能助手默认提示词配置下沉到 `common`，供 `admin` 与 `web` 共同读取。
+- 在 `smartMall-admin` 新增 `AiConfigController`：
+  - `GET /api/ai-config/detail`
+  - `POST /api/ai-config/save`
+- 运行时配置联动：
+  - `MallAssistantAgentServiceImpl` 改为优先读取后台保存的智能助手开关与提示词，未配置时回退 `application.yml`
+  - `ProductInfoServiceImpl` 改为优先读取后台保存的语义搜索配置（ES 地址、索引名、候选数）
+  - `ProductKnowledgeServiceImpl` 改为优先读取后台保存的商品知识增强配置（分页、评论摘要、属性摘要、比较数量、售后亮点）
+- 更新 `smartMall-admin/src/main/resources/application.yml`：
+  - 补齐后台默认 AI 配置项，避免后台展示值与运行默认值脱节。
+- 更新 `apifox_requests.md`：
+  - 新增后台 AI 配置查询/保存接口调试文档。
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+- `smartMall-web`
+
+### 下一步建议
+- 继续补齐 AI 配置管理中的知识库维护能力，例如商品知识重建、索引同步、配置版本回滚。
+- 补充 AI 服务监控能力，例如最近调用状态、降级原因统计、模型与 MCP 工具连通性检查。
+- 若继续沿管理后台主线推进，也可并行补齐“用户账户与权限管理”模块。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台 AI 配置管理基础能力”。

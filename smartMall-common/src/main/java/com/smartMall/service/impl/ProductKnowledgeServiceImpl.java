@@ -18,6 +18,7 @@ import com.smartMall.entities.vo.ProductReviewVO;
 import com.smartMall.service.ProductInfoService;
 import com.smartMall.service.ProductKnowledgeService;
 import com.smartMall.service.ProductReviewService;
+import com.smartMall.service.AiConfigService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,7 @@ public class ProductKnowledgeServiceImpl implements ProductKnowledgeService {
     private ProductReviewService productReviewService;
 
     @Resource
-    private ProductKnowledgeProperties properties;
+    private AiConfigService aiConfigService;
 
     @Override
     public PageResultVO<ProductKnowledgeVO> searchKnowledge(ProductKnowledgeQueryDTO dto) {
@@ -118,16 +119,19 @@ public class ProductKnowledgeServiceImpl implements ProductKnowledgeService {
     }
 
     private int normalizePageSize(Integer pageSize) {
+        ProductKnowledgeProperties properties = aiConfigService.getProductKnowledgeConfig();
         int safePageSize = pageSize == null || pageSize < 1 ? properties.getDefaultPageSize() : pageSize;
         return Math.max(1, safePageSize);
     }
 
     private int normalizeReviewSnippetCount() {
+        ProductKnowledgeProperties properties = aiConfigService.getProductKnowledgeConfig();
         Integer maxReviewSnippetCount = properties.getMaxReviewSnippetCount();
         return maxReviewSnippetCount == null || maxReviewSnippetCount < 1 ? 3 : maxReviewSnippetCount;
     }
 
     private int normalizeCompareCount(Integer maxCount) {
+        ProductKnowledgeProperties properties = aiConfigService.getProductKnowledgeConfig();
         int safeMaxCount = maxCount == null || maxCount < 1 ? properties.getMaxCompareCount() : maxCount;
         return Math.max(2, safeMaxCount);
     }
@@ -296,6 +300,7 @@ public class ProductKnowledgeServiceImpl implements ProductKnowledgeService {
     }
 
     private String buildSellingPointSummary(ProductInfoDetailVo detailVo) {
+        ProductKnowledgeProperties properties = aiConfigService.getProductKnowledgeConfig();
         List<String> fragments = new ArrayList<>();
         if (detailVo.getProductInfo() != null && StringTools.isNotEmpty(detailVo.getProductInfo().getProductDesc())) {
             fragments.add("商品描述：" + detailVo.getProductInfo().getProductDesc().trim());
@@ -338,6 +343,7 @@ public class ProductKnowledgeServiceImpl implements ProductKnowledgeService {
     }
 
     private String buildAfterSalesSummary() {
+        ProductKnowledgeProperties properties = aiConfigService.getProductKnowledgeConfig();
         List<String> afterSalesHighlights = properties.getAfterSalesHighlights();
         if (afterSalesHighlights == null || afterSalesHighlights.isEmpty()) {
             return "支持基础售后咨询与订单跟踪服务。";

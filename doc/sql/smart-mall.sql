@@ -228,3 +228,15 @@ CREATE TABLE `user_preference` (
     PRIMARY KEY (`preference_id`) USING BTREE,
     UNIQUE KEY `uk_user_id` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户偏好档案表';
+CREATE TABLE `sys_ai_config` (
+    `config_id` varchar(32) NOT NULL COMMENT '配置ID',
+    `config_code` varchar(64) NOT NULL COMMENT '配置编码',
+    `config_name` varchar(100) DEFAULT NULL COMMENT '配置名称',
+    `config_content` text COMMENT '配置内容(JSON)',
+    `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`config_id`) USING BTREE,
+    UNIQUE KEY `uk_config_code` (`config_code`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='AI配置表';
+
