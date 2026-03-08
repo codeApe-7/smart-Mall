@@ -1,5 +1,101 @@
 # Apifox 接口调试文档 - 商品属性管理
 
+# Apifox 接口调试文档 - 管理后台用户管理
+
+以下是针对 `UserManageController` 新增接口的调试请求示例。
+
+## 1. 分页查询用户列表
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/user/list`
+- **Content-Type**: `application/json`
+
+### Body 示例
+```json
+{
+  "pageNo": 1,
+  "pageSize": 10,
+  "keyword": "u1001",
+  "phone": "138",
+  "status": 1
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/user/list' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "pageNo": 1,
+  "pageSize": 10,
+  "keyword": "u1001",
+  "status": 1
+}'
+```
+
+### 成功断言
+- `code = 200`
+- `data.records` 返回后台用户列表
+- 列表项包含 `userId`、`nickname`、`status`、`orderCount`、`refundCount`、`lastActiveTime`
+
+## 2. 查询用户详情
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/user/detail/{userId}`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/user/detail/u1001'
+```
+
+### 成功断言
+- `code = 200`
+- `data.userId` 与路径参数一致
+- 返回 `favoriteCategoryNames`、`preferenceTags`、`recentSearchKeywords`、`orderCount`、`refundCount`
+
+## 3. 更新用户状态
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/user/status`
+- **Content-Type**: `application/json`
+
+### Body 示例
+```json
+{
+  "userId": "u1001",
+  "status": 0
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/user/status' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "userId": "u1001",
+  "status": 0
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 再次查询用户详情时，`status = 0`
+- 对业务中首次出现但尚未有账户记录的 `userId` 调用状态更新后，也能查到详情
+
+## 4. 测试用例
+
+| 用例ID | 接口 | 场景 | 请求示例 | 预期结果 |
+| --- | --- | --- | --- | --- |
+| ADMIN-USER-01 | `POST /api/user/list` | 按关键词筛选用户 | `{"pageNo":1,"pageSize":10,"keyword":"u1001"}` | 返回 `code=200`，列表中 `userId/nickname/username` 命中关键词 |
+| ADMIN-USER-02 | `POST /api/user/list` | 按手机号与状态筛选 | `{"pageNo":1,"pageSize":10,"phone":"138","status":1}` | 返回 `code=200`，列表只包含手机号匹配且启用用户 |
+| ADMIN-USER-03 | `GET /api/user/detail/{userId}` | 查询存在用户详情 | 路径传真实 `userId` | 返回订单、退款、偏好、评价等概览字段 |
+| ADMIN-USER-04 | `POST /api/user/status` | 禁用用户 | `{"userId":"真实ID","status":0}` | 返回 `code=200`，详情中状态变为禁用 |
+| ADMIN-USER-05 | `POST /api/user/status` | 启用用户 | `{"userId":"真实ID","status":1}` | 返回 `code=200`，详情中状态变为启用 |
+| ADMIN-USER-06 | `POST /api/user/status` | 更新仅存在业务表中的用户状态 | `{"userId":"业务用户ID","status":0}` | 返回 `code=200`，自动补建账户记录并可查详情 |
+| ADMIN-USER-07 | `GET /api/user/detail/{userId}` | 查询不存在用户 | 路径传不存在 `userId` | 返回 `user not found` |
+
+---
+
 # Apifox 接口调试文档 - 管理后台订单评价管理
 
 以下是针对 `ReviewManageController` 新增接口的调试请求示例。

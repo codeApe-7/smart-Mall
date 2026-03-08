@@ -230,6 +230,23 @@ CREATE TABLE `user_preference` (
     PRIMARY KEY (`preference_id`) USING BTREE,
     UNIQUE KEY `uk_user_id` (`user_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户偏好档案表';
+
+CREATE TABLE `user_account` (
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `username` varchar(64) DEFAULT NULL COMMENT '用户名',
+    `nickname` varchar(64) DEFAULT NULL COMMENT '昵称',
+    `avatar` varchar(500) DEFAULT NULL COMMENT '头像',
+    `phone` varchar(30) DEFAULT NULL COMMENT '手机号',
+    `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0:禁用 1:启用',
+    `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    `last_active_time` datetime DEFAULT NULL COMMENT '最近活跃时间',
+    PRIMARY KEY (`user_id`) USING BTREE,
+    KEY `idx_status` (`status`) USING BTREE,
+    KEY `idx_phone` (`phone`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户账户表';
+
 CREATE TABLE `sys_ai_config` (
     `config_id` varchar(32) NOT NULL COMMENT '配置ID',
     `config_code` varchar(64) NOT NULL COMMENT '配置编码',

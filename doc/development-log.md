@@ -1,5 +1,69 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：管理后台用户管理基础能力
+
+### 本次目标
+- 按开发日志下一步建议和功能导图补齐管理后台“用户管理”能力。
+- 提供后台用户列表、用户详情概览、启用/禁用状态维护接口。
+- 在现有项目缺少用户主表的前提下，补充最小账户表并复用订单、退款、购物车、偏好、会话日志数据完成聚合。
+
+### 本次实现
+- 在 `smartMall-common` 新增用户账户领域模型：
+  - `UserAccount`
+  - `UserAccountStatusEnum`
+  - `UserAccountMapper`
+  - `UserAccountService`
+  - `UserAccountServiceImpl`
+- 在 `smartMall-common` 新增后台用户管理 DTO：
+  - `AdminUserQueryDTO`
+  - `AdminUserStatusDTO`
+- 在 `smartMall-common` 新增后台用户管理 VO：
+  - `AdminUserListVO`
+  - `AdminUserDetailVO`
+- 在 `smartMall-common` 新增后台用户管理 Service / ServiceImpl：
+  - `AdminUserManageService`
+  - `AdminUserManageServiceImpl`
+- 后台用户管理能力包括：
+  - 分页查询后台用户列表，支持按用户ID、关键词、手机号、状态过滤
+  - 用户列表聚合订单数、订单金额、退款数、退款金额、购物车条数和最近活跃时间
+  - 查询单个用户详情，返回偏好分类、偏好标签、近期搜索词、评价数、平均评分等用户画像信息
+  - 启用/禁用用户状态；若用户仅存在业务数据中但没有账户记录，会自动补建 `user_account`
+- 在 `smartMall-admin` 新增控制器：
+  - `UserManageController`
+- 新增后台接口：
+  - `POST /api/user/list`
+  - `GET /api/user/detail/{userId}`
+  - `POST /api/user/status`
+- 更新 `doc/sql/smart-mall.sql`：
+  - 新增 `user_account` 表，用于承载用户资料与启用/禁用状态
+- 更新 `apifox_requests.md`：
+  - 新增管理后台用户管理接口测试文档
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dtest=AdminUserManageTempTest" "-DfailIfNoTests=false" test`
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" -DskipTests package`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 临时本地测试通过，验证后台用户管理服务可创建并执行基本聚合逻辑。
+  - 编译打包通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `doc/sql/smart-mall.sql`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 按后台主线继续补齐系统设置能力，例如消息通知管理、提示信息配置或公告维护。
+- 若要继续完善用户侧后台运营能力，可补用户资料编辑、头像/昵称维护与用户行为趋势统计。
+- 若要增强用户管理闭环，可在用户端关键入口增加“禁用用户不可继续下单/退款/评价”的统一校验。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：管理后台用户管理基础能力"。
+
 ## 2026-03-08 功能点：管理后台订单评价管理基础能力
 
 ### 本次目标
