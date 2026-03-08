@@ -32,12 +32,40 @@ spring:
     uris: http://localhost:9200
     #username: elastic  # 如果启用了安全认证
     #password: your_password
+  ai:
+    chat:
+      client:
+        enabled: true
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${SMART_MALL_ASSISTANT_MODEL:gpt-4.1-mini}
+    mcp:
+      client:
+        enabled: true
+        name: smartMall-web
+        version: 1.0.0
+        type: SYNC
+        request-timeout: 20s
+        toolcallback:
+          enabled: true
+        streamable-http:
+          connections:
+            smartMallMcp:
+              url: ${SMART_MALL_MCP_URL:http://127.0.0.1:8084}
+              endpoint: /mcp
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
 #项目目录
 project:
   folder: e:/webser/web_app/smartMall/
+smart-mall:
+  assistant:
+    agent:
+      enabled: ${SMART_MALL_ASSISTANT_AGENT_ENABLED:false}
 #日志级别
 log:
   root:

@@ -99,7 +99,7 @@ public class MallAssistantServiceImpl implements MallAssistantService {
             case REVIEW_SUBMIT -> handleSubmitReview(dto, sessionId, intent);
             case PRODUCT_SEARCH, UNKNOWN -> handleProductSearch(dto, sessionId, intent);
         };
-        saveChatLog(dto, response);
+        recordChat(dto, response);
         return response;
     }
 
@@ -491,7 +491,8 @@ public class MallAssistantServiceImpl implements MallAssistantService {
         return StringTools.isEmpty(sessionId) ? StringTools.getRandomNumber(LENGTH_32) : sessionId;
     }
 
-    private void saveChatLog(AssistantChatRequestDTO dto, AssistantChatResponseVO response) {
+    @Override
+    public void recordChat(AssistantChatRequestDTO dto, AssistantChatResponseVO response) {
         AssistantChatLog chatLog = new AssistantChatLog();
         chatLog.setChatId(StringTools.getRandomNumber(LENGTH_32));
         chatLog.setSessionId(response.getSessionId());

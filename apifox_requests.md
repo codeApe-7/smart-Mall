@@ -1690,3 +1690,40 @@ curl --location --request POST 'http://localhost:8080/api/assistant/history' \
 | ASSISTANT-REVIEW-02 | 提交订单评价 | 已收货订单 + 合法 `reviews` | 返回 `code=200`，`intentType=REVIEW_SUBMIT` |
 | ASSISTANT-REVIEW-03 | 重复评价 | 已评价订单项再次提交 | 返回 `code=501`，提示重复评价错误 |
 | ASSISTANT-REVIEW-04 | 评分越界 | `rating=0` 或 `rating=6` | 返回 `code=601` 或业务错误，提示评分范围非法 |
+
+---
+
+## 43. Spring AI Agent 对话入口
+
+> 通过 `smartMall-web` 中的 Spring AI ChatClient 调用 MCP Client，联动 `smartMall-mcp` 工具处理商品、订单、退款等问题。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/agent/chat`
+- **Content-Type**: `application/json`
+- **前置说明**:
+  - 启用 AI Agent：`SMART_MALL_ASSISTANT_AGENT_ENABLED=true`
+  - 配置模型 Key：`OPENAI_API_KEY=...`
+  - MCP 服务默认读取：`SMART_MALL_MCP_URL=http://127.0.0.1:8084`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "message": "帮我查询订单并告诉我下一步还能做什么"
+}
+```
+
+### 成功断言
+- AI Agent 可用时：`code = 200`
+- AI Agent 可用时：`data.intentType = AI_AGENT`
+- `data.reply` 返回模型生成的中文回复
+- `data.sessionId` 不为空
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-AGENT-01 | AI Agent 查询订单 | 有效 `userId + orderId`，且已配置模型和 MCP | 返回 `code=200`，`intentType=AI_AGENT` |
+| ASSISTANT-AGENT-02 | AI Agent 商品推荐 | 仅提供商品需求描述 | 返回 `code=200`，`intentType=AI_AGENT` |
+| ASSISTANT-AGENT-03 | 未开启 Agent 开关 | `SMART_MALL_ASSISTANT_AGENT_ENABLED=false` | 返回 `code=200`，自动回退规则助手，`intentType` 为原有规则意图 |
+| ASSISTANT-AGENT-04 | 未配置模型 Key | 缺少 `OPENAI_API_KEY` | 返回 `code=200`，自动回退规则助手 |

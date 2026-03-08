@@ -529,3 +529,51 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：智能购物对话式订单操作扩展与 MCP 工具基础能力”。
+
+## 2026-03-08 功能点：智能购物 Spring AI Agent 接入与 MCP Client 联调基础能力
+
+### 本次目标
+- 在 `smartMall-web` 正式接入 Spring AI ChatClient。
+- 通过 MCP Client 调用 `smartMall-mcp` 暴露的商品、订单与退款工具。
+- 保持现有规则式助手可用，在未配置模型或工具不可用时自动回退。
+
+### 本次实现
+- 在 `smartMall-web/pom.xml` 增加 Spring AI 依赖：
+  - `spring-ai-starter-model-openai`
+  - `spring-ai-starter-mcp-client-webflux`
+- 在 `smartMall-web` 新增 Agent 配置与服务：
+  - `SmartMallAssistantAgentProperties`
+  - `MallAssistantAgentService`
+  - `MallAssistantAgentServiceImpl`
+- 新增 `POST /api/assistant/agent/chat` 接口：
+  - 已配置模型和 MCP 工具时，走 Spring AI Agent 对话流程
+  - 未配置 `OPENAI_API_KEY` 或未连通 MCP 时，自动回退到现有规则助手
+- 扩展 `MallAssistantService`：
+  - 新增 `recordChat`，用于统一记录 AI Agent 与规则助手的对话历史
+- 更新 `application.yml`：
+  - 增加 `spring.ai.openai` 配置占位
+  - 增加 `spring.ai.mcp.client.streamable-http` 连接配置
+  - 增加 `smart-mall.assistant.agent.enabled` 开关
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web,smartMall-mcp -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+- 说明：
+  - 本次测试文件仅用于本地验证，不纳入提交。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 接入 Elasticsearch / RAG 检索，把规则式商品搜索升级为语义检索。
+- 为 AI Agent 输出补齐结构化商品比较、偏好记忆和历史偏好学习能力。
+- 补齐对话式发货模拟、退款审批、结构化评价提交的前端会话交互约束。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：智能购物 Spring AI Agent 接入与 MCP Client 联调基础能力”。

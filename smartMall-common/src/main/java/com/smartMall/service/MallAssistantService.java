@@ -14,4 +14,6 @@ public interface MallAssistantService {
     AssistantChatResponseVO chat(AssistantChatRequestDTO dto);
 
     PageResultVO<AssistantChatHistoryVO> loadHistory(AssistantHistoryQueryDTO dto);
+
+    void recordChat(AssistantChatRequestDTO dto, AssistantChatResponseVO response);
 }

@@ -6,6 +6,7 @@ import com.smartMall.entities.vo.AssistantChatHistoryVO;
 import com.smartMall.entities.vo.AssistantChatResponseVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ResponseVO;
+import com.smartMall.service.MallAssistantAgentService;
 import com.smartMall.service.MallAssistantService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -26,10 +27,19 @@ public class MallAssistantController {
     @Resource
     private MallAssistantService mallAssistantService;
 
+    @Resource
+    private MallAssistantAgentService mallAssistantAgentService;
+
     @PostMapping("/chat")
     public ResponseVO<AssistantChatResponseVO> chat(@RequestBody @Valid AssistantChatRequestDTO dto) {
         log.info("assistant chat request, userId={}, sessionId={}", dto.getUserId(), dto.getSessionId());
         return ResponseVO.success(mallAssistantService.chat(dto));
+    }
+
+    @PostMapping("/agent/chat")
+    public ResponseVO<AssistantChatResponseVO> agentChat(@RequestBody @Valid AssistantChatRequestDTO dto) {
+        log.info("assistant agent chat request, userId={}, sessionId={}", dto.getUserId(), dto.getSessionId());
+        return ResponseVO.success(mallAssistantAgentService.chat(dto));
     }
 
     @PostMapping("/history")
