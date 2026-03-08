@@ -465,3 +465,67 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交为“完成功能点：智能购物对话接入与商品检索基础能力”。
+
+## 2026-03-08 功能点：智能购物对话式订单操作扩展与 MCP 工具基础能力
+
+### 本次目标
+- 在已完成的智能购物助手基础上，继续补齐对话式订单操作能力。
+- 让智能购物助手支持退款申请、退款详情查询、确认收货、订单评价查询、结构化评价提交。
+- 在 `smartMall-mcp` 提供首批商品与订单工具，为后续 Spring AI Agent / MCP Client 接入做准备。
+
+### 本次实现
+- 扩展 `AssistantChatRequestDTO`：
+  - 新增 `refundReason`
+  - 新增 `reviews`
+- 扩展 `AssistantIntentEnum`：
+  - `REFUND_APPLY`
+  - `REFUND_DETAIL`
+  - `RECEIVE_CONFIRM`
+  - `ORDER_REVIEW_QUERY`
+  - `REVIEW_SUBMIT`
+- 扩展 `AssistantChatPayloadVO`：
+  - 新增 `refundInfo`
+  - 新增 `shippingInfo`
+  - 新增 `orderReviews`
+- 扩展 `MallAssistantServiceImpl`，新增对话编排能力：
+  - 对话式退款申请
+  - 对话式退款详情查询
+  - 对话式确认收货
+  - 对话式订单评价查询
+  - 结构化对话评价提交（通过 `reviews` 透传订单项评价）
+- 在 `smartMall-mcp` 新增 `SmartMallMcpTools`，首批提供工具：
+  - `search_visible_products`
+  - `recommend_products`
+  - `get_product_detail`
+  - `list_orders`
+  - `get_order_detail`
+  - `cancel_order`
+  - `apply_refund`
+  - `get_refund_detail`
+  - `confirm_receive`
+  - `get_order_reviews`
+- 更新 `smartMall-mcp/pom.xml`，补充测试依赖用于本地验证。
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web,smartMall-mcp -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+- 说明：
+  - 本次测试文件仅用于本地验证，不纳入提交。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+- `smartMall-mcp`
+
+### 下一步建议
+- 在 `smartMall-web` 接入 Spring AI Client，通过 MCP Client 调用 `smartMall-mcp` 工具。
+- 接入 Elasticsearch / RAG 检索，把规则式商品搜索升级为语义检索。
+- 补齐对话式发货模拟、退款审批、结构化评价提交的前端会话交互约束。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：智能购物对话式订单操作扩展与 MCP 工具基础能力”。

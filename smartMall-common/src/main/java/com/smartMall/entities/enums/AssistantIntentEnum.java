@@ -13,6 +13,11 @@ public enum AssistantIntentEnum {
     ORDER_LIST("ORDER_LIST", "order list"),
     ORDER_DETAIL("ORDER_DETAIL", "order detail"),
     ORDER_CANCEL("ORDER_CANCEL", "cancel order"),
+    REFUND_APPLY("REFUND_APPLY", "apply refund"),
+    REFUND_DETAIL("REFUND_DETAIL", "refund detail"),
+    RECEIVE_CONFIRM("RECEIVE_CONFIRM", "confirm receive"),
+    ORDER_REVIEW_QUERY("ORDER_REVIEW_QUERY", "query order reviews"),
+    REVIEW_SUBMIT("REVIEW_SUBMIT", "submit review"),
     UNKNOWN("UNKNOWN", "unknown");
 
     private final String code;

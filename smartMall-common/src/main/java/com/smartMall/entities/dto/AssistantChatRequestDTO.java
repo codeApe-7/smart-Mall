@@ -3,6 +3,8 @@ package com.smartMall.entities.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * Intelligent shopping assistant chat request.
  */
@@ -20,4 +22,8 @@ public class AssistantChatRequestDTO {
     private String productId;
 
     private String orderId;
+
+    private String refundReason;
+
+    private List<ReviewItemDTO> reviews;
 }

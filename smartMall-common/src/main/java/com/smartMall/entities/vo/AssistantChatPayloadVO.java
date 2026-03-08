@@ -2,6 +2,8 @@ package com.smartMall.entities.vo;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * Assistant chat payload.
  */
@@ -15,6 +17,12 @@ public class AssistantChatPayloadVO {
     private PageResultVO<OrderInfoListVO> orderPage;
 
     private OrderDetailVO orderDetail;
+
+    private RefundInfoVO refundInfo;
+
+    private ShippingInfoVO shippingInfo;
+
+    private List<ProductReviewVO> orderReviews;
 
     private AssistantOperationVO operation;
 }

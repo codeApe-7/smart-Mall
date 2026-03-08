@@ -5,9 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartMall.entities.domain.AssistantChatLog;
 import com.smartMall.entities.dto.AssistantChatRequestDTO;
 import com.smartMall.entities.dto.AssistantHistoryQueryDTO;
+import com.smartMall.entities.dto.ConfirmReceiveDTO;
 import com.smartMall.entities.dto.OrderCancelDTO;
 import com.smartMall.entities.dto.OrderQueryDTO;
 import com.smartMall.entities.dto.ProductQueryDTO;
+import com.smartMall.entities.dto.RefundApplyDTO;
+import com.smartMall.entities.dto.ReviewSubmitDTO;
 import com.smartMall.entities.enums.AssistantIntentEnum;
 import com.smartMall.entities.vo.AssistantChatHistoryVO;
 import com.smartMall.entities.vo.AssistantChatPayloadVO;
@@ -18,10 +21,16 @@ import com.smartMall.entities.vo.OrderInfoListVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
+import com.smartMall.entities.vo.ProductReviewVO;
+import com.smartMall.entities.vo.RefundInfoVO;
+import com.smartMall.entities.vo.ShippingInfoVO;
 import com.smartMall.service.AssistantChatLogService;
 import com.smartMall.service.MallAssistantService;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.ProductInfoService;
+import com.smartMall.service.ProductReviewService;
+import com.smartMall.service.RefundInfoService;
+import com.smartMall.service.ShippingInfoService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +73,15 @@ public class MallAssistantServiceImpl implements MallAssistantService {
     @Resource
     private AssistantChatLogService assistantChatLogService;
 
+    @Resource
+    private RefundInfoService refundInfoService;
+
+    @Resource
+    private ShippingInfoService shippingInfoService;
+
+    @Resource
+    private ProductReviewService productReviewService;
+
     @Override
     public AssistantChatResponseVO chat(AssistantChatRequestDTO dto) {
         String sessionId = normalizeSessionId(dto.getSessionId());
@@ -74,6 +92,11 @@ public class MallAssistantServiceImpl implements MallAssistantService {
             case ORDER_LIST -> handleOrderList(dto, sessionId, intent);
             case ORDER_DETAIL -> handleOrderDetail(dto, sessionId, intent);
             case ORDER_CANCEL -> handleCancelOrder(dto, sessionId, intent);
+            case REFUND_APPLY -> handleApplyRefund(dto, sessionId, intent);
+            case REFUND_DETAIL -> handleRefundDetail(dto, sessionId, intent);
+            case RECEIVE_CONFIRM -> handleConfirmReceive(dto, sessionId, intent);
+            case ORDER_REVIEW_QUERY -> handleOrderReviews(dto, sessionId, intent);
+            case REVIEW_SUBMIT -> handleSubmitReview(dto, sessionId, intent);
             case PRODUCT_SEARCH, UNKNOWN -> handleProductSearch(dto, sessionId, intent);
         };
         saveChatLog(dto, response);
@@ -210,6 +233,108 @@ public class MallAssistantServiceImpl implements MallAssistantService {
                 List.of("查询我的订单", "帮我推荐几款热销商品", "查看订单详情 " + orderId));
     }
 
+    private AssistantChatResponseVO handleApplyRefund(AssistantChatRequestDTO dto, String sessionId,
+                                                      AssistantIntentEnum intent) {
+        String orderId = extractOrderId(dto);
+        RefundApplyDTO refundApplyDTO = new RefundApplyDTO();
+        refundApplyDTO.setUserId(dto.getUserId());
+        refundApplyDTO.setOrderId(orderId);
+        refundApplyDTO.setRefundReason(dto.getRefundReason());
+        RefundInfoVO refundInfoVO = refundInfoService.applyRefund(refundApplyDTO);
+
+        AssistantChatPayloadVO payload = new AssistantChatPayloadVO();
+        payload.setRefundInfo(refundInfoVO);
+
+        AssistantOperationVO operationVO = new AssistantOperationVO();
+        operationVO.setAction(intent.getCode());
+        operationVO.setOrderId(orderId);
+        operationVO.setMessage("退款申请已提交");
+        payload.setOperation(operationVO);
+
+        return buildResponse(sessionId, intent,
+                "订单 " + refundInfoVO.getOrderNo() + " 的退款申请已提交。",
+                payload,
+                List.of("查询退款详情 " + orderId, "查询我的订单", "帮我推荐几款热销商品"));
+    }
+
+    private AssistantChatResponseVO handleRefundDetail(AssistantChatRequestDTO dto, String sessionId,
+                                                       AssistantIntentEnum intent) {
+        String orderId = extractOrderId(dto);
+        RefundInfoVO refundInfoVO = refundInfoService.getRefundDetail(dto.getUserId(), orderId);
+
+        AssistantChatPayloadVO payload = new AssistantChatPayloadVO();
+        payload.setRefundInfo(refundInfoVO);
+
+        return buildResponse(sessionId, intent,
+                "已为你找到订单 " + refundInfoVO.getOrderNo() + " 的退款记录。",
+                payload,
+                List.of("查询我的订单", "查看订单详情 " + orderId, "帮我推荐几款热销商品"));
+    }
+
+    private AssistantChatResponseVO handleConfirmReceive(AssistantChatRequestDTO dto, String sessionId,
+                                                         AssistantIntentEnum intent) {
+        String orderId = extractOrderId(dto);
+        ConfirmReceiveDTO confirmReceiveDTO = new ConfirmReceiveDTO();
+        confirmReceiveDTO.setUserId(dto.getUserId());
+        confirmReceiveDTO.setOrderId(orderId);
+        shippingInfoService.confirmReceive(confirmReceiveDTO);
+        ShippingInfoVO shippingInfoVO = shippingInfoService.getShippingDetail(dto.getUserId(), orderId);
+
+        AssistantChatPayloadVO payload = new AssistantChatPayloadVO();
+        payload.setShippingInfo(shippingInfoVO);
+
+        AssistantOperationVO operationVO = new AssistantOperationVO();
+        operationVO.setAction(intent.getCode());
+        operationVO.setOrderId(orderId);
+        operationVO.setMessage("订单已确认收货");
+        payload.setOperation(operationVO);
+
+        return buildResponse(sessionId, intent,
+                "订单 " + shippingInfoVO.getOrderNo() + " 已确认收货。",
+                payload,
+                List.of("查看订单评价 " + orderId, "查询我的订单", "帮我推荐几款热销商品"));
+    }
+
+    private AssistantChatResponseVO handleOrderReviews(AssistantChatRequestDTO dto, String sessionId,
+                                                       AssistantIntentEnum intent) {
+        String orderId = extractOrderId(dto);
+        List<ProductReviewVO> orderReviews = productReviewService.getOrderReviews(dto.getUserId(), orderId);
+
+        AssistantChatPayloadVO payload = new AssistantChatPayloadVO();
+        payload.setOrderReviews(orderReviews);
+
+        String reply = orderReviews.isEmpty()
+                ? "该订单当前还没有评价记录。"
+                : "已为你找到订单 " + orderId + " 的评价记录。";
+        return buildResponse(sessionId, intent, reply, payload, List.of(
+                "查询我的订单",
+                "查看订单详情 " + orderId,
+                "帮我推荐几款热销商品"));
+    }
+
+    private AssistantChatResponseVO handleSubmitReview(AssistantChatRequestDTO dto, String sessionId,
+                                                       AssistantIntentEnum intent) {
+        ReviewSubmitDTO reviewSubmitDTO = new ReviewSubmitDTO();
+        reviewSubmitDTO.setUserId(dto.getUserId());
+        reviewSubmitDTO.setOrderId(extractOrderId(dto));
+        reviewSubmitDTO.setReviews(dto.getReviews());
+        List<ProductReviewVO> submittedReviews = productReviewService.submitReview(reviewSubmitDTO);
+
+        AssistantChatPayloadVO payload = new AssistantChatPayloadVO();
+        payload.setOrderReviews(submittedReviews);
+
+        AssistantOperationVO operationVO = new AssistantOperationVO();
+        operationVO.setAction(intent.getCode());
+        operationVO.setOrderId(reviewSubmitDTO.getOrderId());
+        operationVO.setMessage("订单评价已提交");
+        payload.setOperation(operationVO);
+
+        return buildResponse(sessionId, intent,
+                "订单 " + reviewSubmitDTO.getOrderId() + " 的评价已提交。",
+                payload,
+                List.of("查看订单评价 " + reviewSubmitDTO.getOrderId(), "查询我的订单", "帮我推荐几款热销商品"));
+    }
+
     private AssistantChatResponseVO buildResponse(String sessionId, AssistantIntentEnum intent, String reply,
                                                   AssistantChatPayloadVO payload, List<String> suggestions) {
         AssistantChatResponseVO response = new AssistantChatResponseVO();
@@ -238,6 +363,22 @@ public class MallAssistantServiceImpl implements MallAssistantService {
         String message = dto.getMessage() == null ? "" : dto.getMessage().toLowerCase(Locale.ROOT);
         if (containsAny(message, "推荐", "热销", "爆款")) {
             return AssistantIntentEnum.PRODUCT_RECOMMEND;
+        }
+        if (containsAny(message, "申请退款", "发起退款")
+                || (containsAny(message, "退款") && containsAny(message, "申请", "发起"))) {
+            return AssistantIntentEnum.REFUND_APPLY;
+        }
+        if (containsAny(message, "退款详情", "退款记录", "查询退款")) {
+            return AssistantIntentEnum.REFUND_DETAIL;
+        }
+        if (containsAny(message, "确认收货")) {
+            return AssistantIntentEnum.RECEIVE_CONFIRM;
+        }
+        if (containsAny(message, "评价记录", "订单评价", "查看评价")) {
+            return AssistantIntentEnum.ORDER_REVIEW_QUERY;
+        }
+        if (containsAny(message, "提交评价", "评价订单") || (dto.getReviews() != null && !dto.getReviews().isEmpty())) {
+            return AssistantIntentEnum.REVIEW_SUBMIT;
         }
         if (((containsAny(message, "取消") && containsAny(message, "订单")) || StringTools.isNotEmpty(dto.getOrderId()))
                 && containsAny(message, "取消", "撤销")) {
@@ -375,6 +516,15 @@ public class MallAssistantServiceImpl implements MallAssistantService {
         }
         if (payload.getOrderDetail() != null) {
             return "orderDetail:" + payload.getOrderDetail().getOrderId();
+        }
+        if (payload.getRefundInfo() != null) {
+            return "refundInfo:" + payload.getRefundInfo().getRefundId();
+        }
+        if (payload.getShippingInfo() != null) {
+            return "shippingInfo:" + payload.getShippingInfo().getShippingId();
+        }
+        if (payload.getOrderReviews() != null) {
+            return "orderReviews:" + payload.getOrderReviews().size();
         }
         if (payload.getOperation() != null) {
             return "operation:" + payload.getOperation().getAction() + ":" + payload.getOperation().getOrderId();

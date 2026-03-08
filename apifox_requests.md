@@ -1542,3 +1542,151 @@ curl --location --request POST 'http://localhost:8080/api/assistant/history' \
 | ASSISTANT-WS-02 | 查询订单详情 | `message="查看订单详情 o10001"` | 返回 `code=200`，`data.intentType=ORDER_DETAIL` |
 | ASSISTANT-WS-03 | 业务异常透传 | `message="取消订单 o10001"`，订单不可取消 | 返回对应业务错误码与错误信息 |
 | ASSISTANT-WS-04 | 非法 JSON 消息 | 发送非 JSON 文本 | 返回 `code=500`，提示 `assistant websocket message parse failed` |
+
+---
+
+# Apifox 接口调试文档 - 智能购物助手扩展场景
+
+以下内容对应提交记录“完成功能点：智能购物对话式订单操作扩展与 MCP 工具基础能力”。
+
+> 以下场景统一调用 `POST /api/assistant/chat`，通过不同 `message` 和结构化字段触发对应能力。
+
+## 39. 对话式退款申请
+
+> 通过智能购物助手发起退款申请，底层复用用户端退款服务。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/chat`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "sessionId": "s20001",
+    "orderId": "o10001",
+    "message": "申请退款",
+    "refundReason": "商品不想要了"
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.intentType = REFUND_APPLY`
+- `data.payload.refundInfo` 含 `refundId/refundNo/refundAmount/refundStatus`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-REFUND-01 | 正常申请退款 | 已支付或已发货订单 | 返回 `code=200`，`intentType=REFUND_APPLY` |
+| ASSISTANT-REFUND-02 | 订单不可退款 | 待支付或已取消订单 | 返回 `code=501`，提示 `order status does not support refund` |
+| ASSISTANT-REFUND-03 | 缺少 orderId | `orderId=""` 且消息中无订单号 | 返回业务错误，提示订单不存在或参数缺失 |
+
+---
+
+## 40. 对话式退款详情查询
+
+> 通过智能购物助手查询某订单的退款详情。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/chat`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "message": "查询退款详情"
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.intentType = REFUND_DETAIL`
+- `data.payload.refundInfo` 含退款状态与退款单号
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-REFUND-DETAIL-01 | 查询退款详情 | 有效 `userId + orderId` | 返回 `code=200`，`intentType=REFUND_DETAIL` |
+| ASSISTANT-REFUND-DETAIL-02 | 无退款记录 | 未申请退款的订单 | 返回 `code=405`，提示 `refund record not found` |
+
+---
+
+## 41. 对话式确认收货
+
+> 通过智能购物助手确认收货，底层复用物流服务。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/chat`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "message": "确认收货"
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.intentType = RECEIVE_CONFIRM`
+- `data.payload.shippingInfo` 含物流单与签收状态
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-RECEIVE-01 | 正常确认收货 | 已发货订单 | 返回 `code=200`，`intentType=RECEIVE_CONFIRM` |
+| ASSISTANT-RECEIVE-02 | 订单状态不支持收货 | 已支付或已收货订单 | 返回 `code=501`，提示 `order status does not support confirming receive` |
+
+---
+
+## 42. 对话式订单评价
+
+> 通过智能购物助手查询订单评价，或通过结构化 `reviews` 字段提交评价。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/assistant/chat`
+- **Content-Type**: `application/json`
+
+### 查询评价示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "message": "查看订单评价"
+}
+```
+
+### 提交评价示例 (JSON)
+```json
+{
+    "userId": "u10001",
+    "orderId": "o10001",
+    "message": "提交评价",
+    "reviews": [
+        {
+            "itemId": "item001",
+            "productId": "p10001",
+            "rating": 5,
+            "content": "质量很好"
+        }
+    ]
+}
+```
+
+### 成功断言
+- 查询时：`data.intentType = ORDER_REVIEW_QUERY`
+- 提交时：`data.intentType = REVIEW_SUBMIT`
+- `data.payload.orderReviews` 返回评价记录列表
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ASSISTANT-REVIEW-01 | 查询订单评价 | 有效 `userId + orderId` | 返回 `code=200`，`intentType=ORDER_REVIEW_QUERY` |
+| ASSISTANT-REVIEW-02 | 提交订单评价 | 已收货订单 + 合法 `reviews` | 返回 `code=200`，`intentType=REVIEW_SUBMIT` |
+| ASSISTANT-REVIEW-03 | 重复评价 | 已评价订单项再次提交 | 返回 `code=501`，提示重复评价错误 |
+| ASSISTANT-REVIEW-04 | 评分越界 | `rating=0` 或 `rating=6` | 返回 `code=601` 或业务错误，提示评分范围非法 |
