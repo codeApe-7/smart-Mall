@@ -1727,3 +1727,40 @@ curl --location --request POST 'http://localhost:8080/api/assistant/history' \
 | ASSISTANT-AGENT-02 | AI Agent 商品推荐 | 仅提供商品需求描述 | 返回 `code=200`，`intentType=AI_AGENT` |
 | ASSISTANT-AGENT-03 | 未开启 Agent 开关 | `SMART_MALL_ASSISTANT_AGENT_ENABLED=false` | 返回 `code=200`，自动回退规则助手，`intentType` 为原有规则意图 |
 | ASSISTANT-AGENT-04 | 未配置模型 Key | 缺少 `OPENAI_API_KEY` | 返回 `code=200`，自动回退规则助手 |
+
+---
+
+## 44. 用户端商品语义检索
+
+> 在开启 `SMART_MALL_SEMANTIC_SEARCH_ENABLED=true` 时，用户端商品列表接口会优先调用 Elasticsearch 做语义检索；ES 不可用或未启用时自动回退数据库模糊搜索。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/product/list`
+- **Content-Type**: `application/json`
+- **前置说明**:
+  - 开启语义检索：`SMART_MALL_SEMANTIC_SEARCH_ENABLED=true`
+  - 配置 ES 地址：`SMART_MALL_ES_URL=http://127.0.0.1:9200`
+  - 配置索引名：`SMART_MALL_PRODUCT_INDEX=smart_mall_product`
+
+### Body 示例 (JSON)
+```json
+{
+    "pageNo": 1,
+    "pageSize": 10,
+    "productName": "适合学生拍照和续航好的手机",
+    "semanticSearch": true
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.records` 返回在售商品列表
+- `data.records[*].productId/productName/minPrice/maxPrice` 字段存在
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PRODUCT-SEMANTIC-01 | 语义检索商品 | `semanticSearch=true` + 自然语言商品需求 | 返回 `code=200`，商品列表非空或正常空结果 |
+| PRODUCT-SEMANTIC-02 | 语义检索按分类过滤 | 增加 `categoryIdOrPCategoryId` | 返回 `code=200`，结果仅包含对应分类商品 |
+| PRODUCT-SEMANTIC-03 | ES 未启用自动回退 | `SMART_MALL_SEMANTIC_SEARCH_ENABLED=false` | 返回 `code=200`，接口继续走数据库模糊搜索 |
+| PRODUCT-SEMANTIC-04 | ES 不可达自动回退 | 开启语义检索但 `SMART_MALL_ES_URL` 不可访问 | 返回 `code=200`，接口继续走数据库模糊搜索 |

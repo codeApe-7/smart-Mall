@@ -66,6 +66,11 @@ smart-mall:
   assistant:
     agent:
       enabled: ${SMART_MALL_ASSISTANT_AGENT_ENABLED:false}
+  search:
+    semantic-enabled: ${SMART_MALL_SEMANTIC_SEARCH_ENABLED:false}
+    elasticsearch-uri: ${SMART_MALL_ES_URL:${spring.elasticsearch.uris}}
+    product-index-name: ${SMART_MALL_PRODUCT_INDEX:smart_mall_product}
+    semantic-candidate-size: ${SMART_MALL_SEMANTIC_CANDIDATE_SIZE:50}
 #日志级别
 log:
   root:

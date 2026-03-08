@@ -20,6 +20,8 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
+  elasticsearch:
+    uris: ${SMART_MALL_ES_URL:http://127.0.0.1:9200}
   ai:
     # MCP 服务
     mcp:
@@ -37,3 +39,9 @@ mybatis:
 #项目目录
 project:
   folder: e:/webser/web_app/smartMall/
+smart-mall:
+  search:
+    semantic-enabled: ${SMART_MALL_SEMANTIC_SEARCH_ENABLED:false}
+    elasticsearch-uri: ${SMART_MALL_ES_URL:${spring.elasticsearch.uris}}
+    product-index-name: ${SMART_MALL_PRODUCT_INDEX:smart_mall_product}
+    semantic-candidate-size: ${SMART_MALL_SEMANTIC_CANDIDATE_SIZE:50}

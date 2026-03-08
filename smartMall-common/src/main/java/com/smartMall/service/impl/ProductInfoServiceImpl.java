@@ -2,9 +2,12 @@ package com.smartMall.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.smartMall.entities.config.ProductSearchProperties;
 import com.smartMall.entities.domain.ProductInfo;
 import com.smartMall.entities.domain.ProductPropertyValue;
 import com.smartMall.entities.domain.ProductSku;
@@ -29,6 +32,11 @@ import com.smartMall.service.SysCategoryService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +50,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.smartMall.entities.constant.Constants.LENGTH_32;
@@ -59,6 +68,15 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
     private static final int DEFAULT_RECOMMEND_LIMIT = 6;
     private static final int MAX_RECOMMEND_LIMIT = 20;
     private static final int RECOMMEND_PRODUCT = 1;
+    private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json; charset=utf-8");
+
+    private final OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .build();
+
+    @Resource
+    private ProductSearchProperties productSearchProperties = new ProductSearchProperties();
 
     @Resource
     private ProductPropertyValueService productPropertyValueService;
@@ -94,49 +112,7 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
             return PageResultVO.empty(safeQuery.getPageNo(), safeQuery.getPageSize());
         }
 
-        Set<String> categoryIds = new HashSet<>();
-        productList.forEach(product -> {
-            if (product.getCategoryId() != null) {
-                categoryIds.add(product.getCategoryId());
-            }
-            if (product.getPCategoryId() != null) {
-                categoryIds.add(product.getPCategoryId());
-            }
-        });
-
-        Map<String, String> categoryNameMap = new HashMap<>();
-        if (!categoryIds.isEmpty()) {
-            List<SysCategory> categories = sysCategoryService.listByIds(categoryIds);
-            categoryNameMap = categories.stream().collect(Collectors.toMap(
-                    SysCategory::getCategoryId,
-                    SysCategory::getCategoryName,
-                    (left, right) -> left));
-        }
-
-        List<String> productIds = productList.stream()
-                .map(ProductInfo::getProductId)
-                .toList();
-        List<ProductSku> allSkus = productSkuService.list(
-                new LambdaQueryWrapper<ProductSku>().in(ProductSku::getProductId, productIds));
-        Map<String, List<ProductSku>> skuGroupMap = allSkus.stream()
-                .collect(Collectors.groupingBy(ProductSku::getProductId));
-
-        Map<String, String> finalCategoryNameMap = categoryNameMap;
-        List<ProductInfoListVO> voList = productList.stream().map(product -> {
-            ProductInfoListVO productInfoListVO = new ProductInfoListVO();
-            BeanUtils.copyProperties(product, productInfoListVO);
-            String pName = finalCategoryNameMap.getOrDefault(product.getPCategoryId(), "");
-            String cName = finalCategoryNameMap.getOrDefault(product.getCategoryId(), "");
-            productInfoListVO.setCategoryName(pName + "/" + cName);
-
-            List<ProductSku> skus = skuGroupMap.getOrDefault(product.getProductId(), List.of());
-            productInfoListVO.setSkuCount(skus.size());
-            productInfoListVO.setTotalStock(skus.stream()
-                    .mapToInt(sku -> sku.getStock() != null ? sku.getStock() : 0)
-                    .sum());
-            return productInfoListVO;
-        }).toList();
-
+        List<ProductInfoListVO> voList = buildProductListVOs(productList);
         return new PageResultVO<>(safeQuery.getPageNo(), safeQuery.getPageSize(), page.getTotal(), voList);
     }
 
@@ -147,6 +123,12 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         log.info("load visible products, pageNo={}, pageSize={}, categoryId={}, commendType={}",
                 visibleQuery.getPageNo(), visibleQuery.getPageSize(),
                 visibleQuery.getCategoryIdOrPCategoryId(), visibleQuery.getCommendType());
+        if (shouldUseSemanticSearch(visibleQuery)) {
+            PageResultVO<ProductInfoListVO> semanticSearchResult = loadVisibleProductListBySemanticSearch(visibleQuery);
+            if (semanticSearchResult != null) {
+                return semanticSearchResult;
+            }
+        }
         return loadProductList(visibleQuery);
     }
 
@@ -292,6 +274,204 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
             return DEFAULT_RECOMMEND_LIMIT;
         }
         return Math.min(limit, MAX_RECOMMEND_LIMIT);
+    }
+
+    private boolean shouldUseSemanticSearch(ProductQueryDTO queryDTO) {
+        return productSearchProperties.isSemanticEnabled()
+                && !Boolean.FALSE.equals(queryDTO.getSemanticSearch())
+                && StringTools.isNotEmpty(queryDTO.getProductName());
+    }
+
+    private PageResultVO<ProductInfoListVO> loadVisibleProductListBySemanticSearch(ProductQueryDTO queryDTO) {
+        try {
+            JSONObject requestJson = buildSemanticSearchRequest(queryDTO);
+            Request request = new Request.Builder()
+                    .url(buildElasticsearchSearchUrl())
+                    .post(RequestBody.create(requestJson.toJSONString(), JSON_MEDIA_TYPE))
+                    .build();
+            try (Response response = okHttpClient.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    log.warn("semantic search fallback to db, httpStatus={}", response.code());
+                    return null;
+                }
+                JSONObject responseJson = JSONObject.parseObject(response.body().string());
+                JSONObject hitsJson = responseJson.getJSONObject("hits");
+                if (hitsJson == null) {
+                    return null;
+                }
+                long totalCount = extractSemanticSearchTotal(hitsJson);
+                List<String> productIds = extractSemanticProductIds(hitsJson);
+                if (productIds.isEmpty()) {
+                    log.info("semantic search returned empty result, fallback to db, keyword={}", queryDTO.getProductName());
+                    return null;
+                }
+                List<ProductInfoListVO> records = loadVisibleProductListByIds(productIds);
+                if (records.isEmpty()) {
+                    log.info("semantic search ids not found in db, fallback to db, keyword={}", queryDTO.getProductName());
+                    return null;
+                }
+                log.info("semantic search success, keyword={}, totalCount={}, recordCount={}",
+                        queryDTO.getProductName(), totalCount, records.size());
+                return new PageResultVO<>(queryDTO.getPageNo(), queryDTO.getPageSize(), totalCount, records);
+            }
+        } catch (Exception e) {
+            log.warn("semantic search fallback to db, keyword={}", queryDTO.getProductName(), e);
+            return null;
+        }
+    }
+
+    private JSONObject buildSemanticSearchRequest(ProductQueryDTO queryDTO) {
+        JSONObject root = new JSONObject();
+        root.put("from", queryDTO.getOffset());
+        root.put("size", normalizeSemanticCandidateSize(queryDTO.getPageSize()));
+        root.put("track_total_hits", true);
+
+        JSONArray sourceFields = new JSONArray();
+        sourceFields.add("productId");
+        root.put("_source", sourceFields);
+
+        JSONObject boolQuery = new JSONObject();
+        JSONArray mustArray = new JSONArray();
+        JSONArray filterArray = new JSONArray();
+
+        JSONObject multiMatch = new JSONObject();
+        multiMatch.put("query", queryDTO.getProductName());
+        JSONArray fieldsArray = new JSONArray();
+        fieldsArray.add("productName^4");
+        fieldsArray.add("productDesc^2");
+        fieldsArray.add("categoryName");
+        multiMatch.put("fields", fieldsArray);
+        multiMatch.put("minimum_should_match", "60%");
+        mustArray.add(JSONObject.of("multi_match", multiMatch));
+
+        filterArray.add(JSONObject.of("term", JSONObject.of("status", ProductStatusEnum.ON_SALE.getStatus())));
+        if (queryDTO.getCommendType() != null) {
+            filterArray.add(JSONObject.of("term", JSONObject.of("commendType", queryDTO.getCommendType())));
+        }
+        if (StringTools.isNotEmpty(queryDTO.getCategoryIdOrPCategoryId())) {
+            JSONObject categoryBool = new JSONObject();
+            JSONArray shouldArray = new JSONArray();
+            shouldArray.add(JSONObject.of("term", JSONObject.of("categoryId", queryDTO.getCategoryIdOrPCategoryId())));
+            shouldArray.add(JSONObject.of("term", JSONObject.of("pCategoryId", queryDTO.getCategoryIdOrPCategoryId())));
+            categoryBool.put("should", shouldArray);
+            categoryBool.put("minimum_should_match", 1);
+            filterArray.add(JSONObject.of("bool", categoryBool));
+        }
+
+        boolQuery.put("must", mustArray);
+        boolQuery.put("filter", filterArray);
+        root.put("query", JSONObject.of("bool", boolQuery));
+        return root;
+    }
+
+    private String buildElasticsearchSearchUrl() {
+        String uri = productSearchProperties.getElasticsearchUri();
+        if (StringTools.isEmpty(uri)) {
+            uri = "http://127.0.0.1:9200";
+        }
+        String normalizedUri = uri.split(",")[0].trim();
+        if (normalizedUri.endsWith("/")) {
+            normalizedUri = normalizedUri.substring(0, normalizedUri.length() - 1);
+        }
+        return normalizedUri + "/" + productSearchProperties.getProductIndexName() + "/_search";
+    }
+
+    private int normalizeSemanticCandidateSize(Integer pageSize) {
+        int basePageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
+        int candidateSize = productSearchProperties.getSemanticCandidateSize() == null
+                ? basePageSize : productSearchProperties.getSemanticCandidateSize();
+        return Math.max(basePageSize, candidateSize);
+    }
+
+    private long extractSemanticSearchTotal(JSONObject hitsJson) {
+        JSONObject totalJson = hitsJson.getJSONObject("total");
+        if (totalJson == null) {
+            return 0L;
+        }
+        return totalJson.getLongValue("value");
+    }
+
+    private List<String> extractSemanticProductIds(JSONObject hitsJson) {
+        JSONArray hitArray = hitsJson.getJSONArray("hits");
+        if (hitArray == null || hitArray.isEmpty()) {
+            return List.of();
+        }
+        List<String> productIds = new ArrayList<>();
+        for (int i = 0; i < hitArray.size(); i++) {
+            JSONObject hitJson = hitArray.getJSONObject(i);
+            JSONObject sourceJson = hitJson.getJSONObject("_source");
+            String productId = sourceJson == null ? null : sourceJson.getString("productId");
+            if (StringTools.isEmpty(productId)) {
+                productId = hitJson.getString("_id");
+            }
+            if (StringTools.isNotEmpty(productId)) {
+                productIds.add(productId);
+            }
+        }
+        return productIds.stream().distinct().toList();
+    }
+
+    private List<ProductInfoListVO> loadVisibleProductListByIds(List<String> productIds) {
+        List<ProductInfo> productList = this.list(new LambdaQueryWrapper<ProductInfo>()
+                .in(ProductInfo::getProductId, productIds)
+                .eq(ProductInfo::getStatus, ProductStatusEnum.ON_SALE.getStatus()));
+        if (productList.isEmpty()) {
+            return List.of();
+        }
+        Map<String, ProductInfo> productMap = productList.stream().collect(Collectors.toMap(
+                ProductInfo::getProductId,
+                product -> product,
+                (left, right) -> left));
+        List<ProductInfo> orderedProducts = productIds.stream()
+                .map(productMap::get)
+                .filter(Objects::nonNull)
+                .toList();
+        return buildProductListVOs(orderedProducts);
+    }
+
+    private List<ProductInfoListVO> buildProductListVOs(List<ProductInfo> productList) {
+        Set<String> categoryIds = new HashSet<>();
+        productList.forEach(product -> {
+            if (product.getCategoryId() != null) {
+                categoryIds.add(product.getCategoryId());
+            }
+            if (product.getPCategoryId() != null) {
+                categoryIds.add(product.getPCategoryId());
+            }
+        });
+
+        Map<String, String> categoryNameMap = new HashMap<>();
+        if (!categoryIds.isEmpty()) {
+            List<SysCategory> categories = sysCategoryService.listByIds(categoryIds);
+            categoryNameMap = categories.stream().collect(Collectors.toMap(
+                    SysCategory::getCategoryId,
+                    SysCategory::getCategoryName,
+                    (left, right) -> left));
+        }
+
+        List<String> productIds = productList.stream()
+                .map(ProductInfo::getProductId)
+                .toList();
+        List<ProductSku> allSkus = productIds.isEmpty() ? List.of() : productSkuService.list(
+                new LambdaQueryWrapper<ProductSku>().in(ProductSku::getProductId, productIds));
+        Map<String, List<ProductSku>> skuGroupMap = allSkus.stream()
+                .collect(Collectors.groupingBy(ProductSku::getProductId));
+
+        Map<String, String> finalCategoryNameMap = categoryNameMap;
+        return productList.stream().map(product -> {
+            ProductInfoListVO productInfoListVO = new ProductInfoListVO();
+            BeanUtils.copyProperties(product, productInfoListVO);
+            String pName = finalCategoryNameMap.getOrDefault(product.getPCategoryId(), "");
+            String cName = finalCategoryNameMap.getOrDefault(product.getCategoryId(), "");
+            productInfoListVO.setCategoryName(pName + "/" + cName);
+
+            List<ProductSku> skus = skuGroupMap.getOrDefault(product.getProductId(), List.of());
+            productInfoListVO.setSkuCount(skus.size());
+            productInfoListVO.setTotalStock(skus.stream()
+                    .mapToInt(sku -> sku.getStock() != null ? sku.getStock() : 0)
+                    .sum());
+            return productInfoListVO;
+        }).toList();
     }
 
     private List<ProductPropertyValue> convertPropertyValues(List<ProductPropertyValueVO> voList) {

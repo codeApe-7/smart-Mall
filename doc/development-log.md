@@ -577,3 +577,52 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：智能购物 Spring AI Agent 接入与 MCP Client 联调基础能力”。
+
+## 2026-03-08 功能点：商品 Elasticsearch 语义检索与数据库回退基础能力
+
+### 本次目标
+- 接入 Elasticsearch 商品检索能力，为用户端商品搜索、规则助手商品搜索和 MCP 商品搜索提供统一的语义检索入口。
+- 在不破坏现有商品列表接口的前提下，把商品关键词搜索升级为“ES 优先、数据库回退”模式。
+- 保持未配置 Elasticsearch 时系统仍可正常工作。
+
+### 本次实现
+- 在 `smartMall-common` 新增商品搜索配置：
+  - `ProductSearchProperties`
+- 扩展 `ProductQueryDTO`：
+  - 新增 `semanticSearch`
+- 增强 `ProductInfoServiceImpl`：
+  - `loadVisibleProductList` 在启用语义检索且存在关键词时，优先调用 Elasticsearch
+  - Elasticsearch 返回商品 ID 后，回查 MySQL 并复用现有商品列表组装逻辑
+  - Elasticsearch 不可用、无结果、索引数据不一致或调用异常时，自动回退原有数据库模糊查询
+  - 现有规则助手 `MallAssistantServiceImpl` 和 MCP 工具 `search_visible_products` 因复用 `ProductInfoService`，同步获得语义检索能力
+- 更新运行配置：
+  - `smartMall-web/src/main/resources/application.yml`
+  - `smartMall-mcp/src/main/resources/application.yml`
+  - 新增 `SMART_MALL_SEMANTIC_SEARCH_ENABLED`
+  - 新增 `SMART_MALL_ES_URL`
+  - 新增 `SMART_MALL_PRODUCT_INDEX`
+  - 新增 `SMART_MALL_SEMANTIC_CANDIDATE_SIZE`
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web,smartMall-mcp -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+- 说明：
+  - 本次测试文件仅用于本地验证，不纳入提交。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+- `smartMall-mcp`
+
+### 下一步建议
+- 在语义检索基础上继续补齐 RAG 知识增强检索，把商品卖点、评价摘要、售后说明纳入召回内容。
+- 为 AI Agent 输出补齐结构化商品比较、偏好记忆和历史偏好学习能力。
+- 补齐对话式发货模拟、退款审批、结构化评价提交的前端会话交互约束。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：商品 Elasticsearch 语义检索与数据库回退基础能力”。

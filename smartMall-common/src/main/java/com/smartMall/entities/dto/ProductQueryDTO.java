@@ -34,4 +34,9 @@ public class ProductQueryDTO extends PageQueryDTO {
      * 商品状态
      */
     private Integer status;
+
+    /**
+     * 是否启用语义搜索
+     */
+    private Boolean semanticSearch;
 }
