@@ -1,9 +1,12 @@
 package com.smartMall.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.smartMall.annotation.AdminAuditLog;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.smartMall.entities.domain.SysCategory;
 import com.smartMall.entities.domain.SysProductProperty;
 import com.smartMall.entities.dto.SysCategoryQueryDTO;
+import com.smartMall.entities.enums.AdminOperationTypeEnum;
 import com.smartMall.entities.dto.SysCategorySaveDTO;
 import com.smartMall.entities.dto.SysProductPropertySaveDTO;
 import com.smartMall.entities.vo.PageResultVO;
@@ -27,6 +30,7 @@ import java.util.List;
  * @date 2026/1/25
  */
 @RestController
+@SaCheckPermission("product:manage")
 @RequestMapping("/category")
 public class SysCategoryController {
 
@@ -91,6 +95,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/add")
+    @AdminAuditLog(value = "新增商品分类", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> add(@RequestBody @Valid SysCategorySaveDTO category) {
         sysCategoryService.addCategory(category);
         return ResponseVO.success();
@@ -103,6 +108,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/update")
+    @AdminAuditLog(value = "更新商品分类", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> update(@RequestBody @Valid SysCategory category) {
         sysCategoryService.updateById(category);
         return ResponseVO.success();
@@ -115,6 +121,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/delete/{categoryId}")
+    @AdminAuditLog(value = "删除商品分类", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> delete(@PathVariable String categoryId) {
         sysCategoryService.deleteCategory(categoryId);
         return ResponseVO.success();
@@ -178,6 +185,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/changeSort")
+    @AdminAuditLog(value = "调整商品分类排序", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> changeSort(@RequestParam String categoryIds) {
         sysCategoryService.changeSort(categoryIds);
         return ResponseVO.success();
@@ -204,6 +212,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/property/add")
+    @AdminAuditLog(value = "新增商品属性", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> addProperty(@RequestBody @Valid SysProductPropertySaveDTO saveDTO) {
         sysProductPropertyService.addProperty(saveDTO);
         return ResponseVO.success();
@@ -216,6 +225,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/property/update")
+    @AdminAuditLog(value = "更新商品属性", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> updateProperty(@RequestBody @Valid SysProductProperty property) {
         sysProductPropertyService.updateProperty(property);
         return ResponseVO.success();
@@ -228,6 +238,7 @@ public class SysCategoryController {
      * @return 操作结果
      */
     @PostMapping("/property/delete/{propertyId}")
+    @AdminAuditLog(value = "删除商品属性", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> deleteProperty(@PathVariable String propertyId) {
         sysProductPropertyService.deleteProperty(propertyId);
         return ResponseVO.success();
@@ -245,3 +256,5 @@ public class SysCategoryController {
         return ResponseVO.success();
     }
 }
+
+

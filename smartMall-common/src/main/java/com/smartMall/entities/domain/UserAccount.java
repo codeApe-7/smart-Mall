@@ -30,6 +30,9 @@ public class UserAccount implements Serializable {
     @TableField("phone")
     private String phone;
 
+    @TableField("password")
+    private String password;
+
     @TableField("status")
     private Integer status;
 

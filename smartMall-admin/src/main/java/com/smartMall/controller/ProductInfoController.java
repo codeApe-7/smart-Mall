@@ -1,11 +1,14 @@
 package com.smartMall.controller;
 
+import com.smartMall.annotation.AdminAuditLog;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.ProductSaveDTO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
 import com.smartMall.entities.vo.ResponseVO;
+import com.smartMall.entities.enums.AdminOperationTypeEnum;
 import com.smartMall.service.ProductInfoService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/product")
+@SaCheckPermission("product:manage")
 public class ProductInfoController {
 
     @Resource
@@ -47,6 +51,7 @@ public class ProductInfoController {
      * @return 操作结果
      */
     @PostMapping("/save")
+    @AdminAuditLog(value = "保存商品信息", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> saveProduct(@RequestBody @Valid ProductSaveDTO productSaveDTO) {
         productInfoService.saveProduct(productSaveDTO);
         return ResponseVO.success();
@@ -59,8 +64,11 @@ public class ProductInfoController {
      * @return 操作结果
      */
     @PostMapping("/delete/{productId}")
+    @AdminAuditLog(value = "删除商品信息", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<Void> deleteProduct(@PathVariable String productId) {
         productInfoService.deleteProduct(productId);
         return ResponseVO.success();
     }
 }
+
+

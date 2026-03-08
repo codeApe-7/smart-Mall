@@ -20,4 +20,6 @@ public class RedisConstant {
     public static final long REDIS_KEY_TOKEN_ONE_DAY_EXPIRE_TIME = 60 * 60 * 24;
 
     public static final String REDIS_KEY_TOKEN_ADMIN = REDIS_KEY_PREFIX + "token:admin:";
+
+    public static final String REDIS_KEY_TOKEN_USER = REDIS_KEY_PREFIX + "token:user:";
 }

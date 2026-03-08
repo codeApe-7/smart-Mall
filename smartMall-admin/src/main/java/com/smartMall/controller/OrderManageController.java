@@ -1,5 +1,7 @@
 package com.smartMall.controller;
 
+import com.smartMall.annotation.AdminAuditLog;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.smartMall.entities.dto.AdminOrderQueryDTO;
 import com.smartMall.entities.dto.AdminShipOrderDTO;
 import com.smartMall.entities.vo.AdminOrderListVO;
@@ -7,6 +9,7 @@ import com.smartMall.entities.vo.OrderDetailVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.entities.vo.ShippingInfoVO;
+import com.smartMall.entities.enums.AdminOperationTypeEnum;
 import com.smartMall.service.AdminOrderManageService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/order")
+@SaCheckPermission("order:manage")
 public class OrderManageController {
 
     @Resource
@@ -38,6 +42,7 @@ public class OrderManageController {
     }
 
     @PostMapping("/ship")
+    @AdminAuditLog(value = "后台订单发货", type = AdminOperationTypeEnum.ORDER)
     public ResponseVO<ShippingInfoVO> ship(@RequestBody @Valid AdminShipOrderDTO dto) {
         return ResponseVO.success(adminOrderManageService.shipOrder(dto));
     }
@@ -47,3 +52,5 @@ public class OrderManageController {
         return ResponseVO.success(adminOrderManageService.getShippingDetail(orderId));
     }
 }
+
+

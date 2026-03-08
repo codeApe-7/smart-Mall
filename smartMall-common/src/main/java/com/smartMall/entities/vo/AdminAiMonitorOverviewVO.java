@@ -34,5 +34,11 @@ public class AdminAiMonitorOverviewVO implements Serializable {
 
     private List<AdminAiMonitorMetricVO> fallbackStats;
 
+    private List<AdminAiMonitorMetricVO> errorCodeStats;
+
+    private List<AdminAiMonitorMetricVO> toolInvokeStats;
+
+    private List<AdminAiMonitorTrendVO> dailyTrends;
+
     private List<AdminAiMonitorRecentEventVO> recentEvents;
 }

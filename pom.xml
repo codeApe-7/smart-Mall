@@ -46,6 +46,7 @@
         <alipay.version>4.40.576.ALL</alipay.version>
         <elasticsearch.version>9.2.1</elasticsearch.version>
         <hutool.version>5.8.34</hutool.version>
+        <sa-token.version>1.44.0</sa-token.version>
     </properties>
 
     <dependencyManagement>
@@ -193,6 +194,13 @@
                 <artifactId>hutool-all</artifactId>
                 <version>${hutool.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-spring-boot3-starter</artifactId>
+                <version>${sa-token.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

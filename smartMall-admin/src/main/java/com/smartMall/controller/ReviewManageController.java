@@ -1,10 +1,13 @@
 package com.smartMall.controller;
 
+import com.smartMall.annotation.AdminAuditLog;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.smartMall.entities.dto.AdminReviewQueryDTO;
 import com.smartMall.entities.dto.AdminReviewReplyDTO;
 import com.smartMall.entities.vo.AdminReviewInfoVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ResponseVO;
+import com.smartMall.entities.enums.AdminOperationTypeEnum;
 import com.smartMall.service.AdminReviewManageService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/review")
+@SaCheckPermission("review:manage")
 public class ReviewManageController {
 
     @Resource
@@ -36,14 +40,18 @@ public class ReviewManageController {
     }
 
     @PostMapping("/reply")
+    @AdminAuditLog(value = "回复商品评价", type = AdminOperationTypeEnum.REVIEW)
     public ResponseVO<Void> reply(@RequestBody @Valid AdminReviewReplyDTO dto) {
         adminReviewManageService.replyReview(dto);
         return ResponseVO.success();
     }
 
     @PostMapping("/delete/{reviewId}")
+    @AdminAuditLog(value = "删除商品评价", type = AdminOperationTypeEnum.REVIEW)
     public ResponseVO<Void> delete(@PathVariable String reviewId) {
         adminReviewManageService.deleteReview(reviewId);
         return ResponseVO.success();
     }
 }
+
+

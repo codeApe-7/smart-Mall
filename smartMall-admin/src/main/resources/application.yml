@@ -69,6 +69,14 @@ smart-mall:
       low-stock-threshold: ${SMART_MALL_ADMIN_LOW_STOCK_THRESHOLD:10}
       low-stock-limit: ${SMART_MALL_ADMIN_LOW_STOCK_LIMIT:10}
       pending-shipment-limit: ${SMART_MALL_ADMIN_PENDING_SHIPMENT_LIMIT:10}
+sa-token:
+  token-name: adminToken
+  timeout: 86400
+  active-timeout: 86400
+  is-read-header: true
+  is-read-cookie: false
+  is-read-body: false
+  is-read-param: true
 #日志级别
 log:
   root:

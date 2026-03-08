@@ -1,5 +1,6 @@
 package com.smartMall.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.smartMall.entities.vo.AdminAiMonitorOverviewVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.service.AdminAiMonitorService;
@@ -10,8 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Admin AI monitor controller.
+ * @author 15712
  */
 @RestController
+@SaCheckPermission("ai:monitor")
 @RequestMapping("/ai-monitor")
 public class AiMonitorController {
 
@@ -23,3 +26,5 @@ public class AiMonitorController {
         return ResponseVO.success(adminAiMonitorService.getOverview());
     }
 }
+
+

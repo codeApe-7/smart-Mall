@@ -1418,3 +1418,468 @@
 
 ### 提交记录
 - Git Commit: 本次功能点提交建议为“完成功能点：管理后台 AI 服务监控基础能力”。
+
+## 2026-03-08 功能点：用户端注册登录与个人中心管理基础能力
+
+### 本次目标
+- 按技术方案中的“用户注册登录与个人中心管理”补齐用户端基础账户能力。
+- 提供用户注册、登录、退出、资料查询/更新、密码修改与收货地址管理接口。
+- 在不改动现有购物车、订单、支付、退款主链路入参风格的前提下，为后续用户端统一登录态接入预留 `userToken` 能力。
+
+### 本次实现
+- 更新 `doc/sql/smart-mall.sql`：
+  - 扩展 `user_account` 表，补充 `password` 字段并增加用户名唯一索引。
+  - 新增 `user_delivery_address` 表，用于维护用户收货地址、默认地址与地址标签。
+- 在 `smartMall-common` 新增用户端账号与个人中心 DTO / VO：
+  - `MallUserRegisterDTO`
+  - `MallUserLoginDTO`
+  - `MallUserProfileUpdateDTO`
+  - `MallUserPasswordUpdateDTO`
+  - `UserAddressSaveDTO`
+  - `MallUserLoginVO`
+  - `MallUserProfileVO`
+  - `UserAddressVO`
+- 在 `smartMall-common` 新增用户收货地址领域模型与基础服务：
+  - `UserDeliveryAddress`
+  - `UserDeliveryAddressMapper`
+  - `UserDeliveryAddressService`
+  - `UserDeliveryAddressServiceImpl`
+- 在 `smartMall-common` 新增用户端个人中心聚合服务：
+  - `MallUserCenterService`
+  - `MallUserCenterServiceImpl`
+- 扩展 Redis 登录态能力：
+  - `RedisConstant` 新增用户端 token key 前缀
+  - `RedisComponent` 新增 `saveUserToken/getUserToken/cleanUserToken`
+- 在 `smartMall-web` 新增控制器：
+  - `MallAccountController`
+  - `MallAddressController`
+- 新增用户端接口：
+  - `POST /api/account/register`
+
+## 2026-03-08 功能点：管理后台统一鉴权、权限校验与操作审计闭环增强
+
+### 本次目标
+- 按管理后台账户权限管理与系统设置主线，补齐 `adminToken` 统一鉴权、接口级权限校验和操作审计闭环。
+- 让后台权限目录覆盖商品管理、消息通知、审计日志等菜单，避免“有接口无权限码”的配置缺口。
+- 在已有 AI 服务监控总览基础上补充更细粒度指标，便于后台直接定位降级原因与组件调用趋势。
+
+### 本次实现
+- 在 `smartMall-admin` / `smartMall-common` 增加后台统一安全链路：
+  - `AdminWebMvcConfig`
+  - `AdminAuthInterceptor`
+  - `AdminSecurityContext`
+  - `AdminPermission`
+- 后台统一鉴权能力包括：
+  - 后台除登录、验证码、资源读取外统一要求携带 `adminToken`
+  - 支持从 Header `adminToken`、`Authorization: Bearer ...` 或请求参数读取令牌
+  - 令牌校验成功后自动续期，避免后台持续操作时频繁失效
+  - 已被禁用的后台账号即使持有旧令牌，也会在访问时被拒绝
+- 接口级权限校验增强：
+  - 为数据看板、商品管理、订单退款、用户管理、AI 配置、知识库、AI 监控、审计日志、账户权限等控制器补齐 `@AdminPermission`
+  - 更新 `AdminPermissionEnum`，补齐 `product:manage`、`notice:manage`、`audit:log` 等权限码与分组描述
+- 后台操作审计日志增强：
+  - 基于 `AdminAuditLog` + `AdminAuditAspect` 将登录、退出、账号保存、账号状态更新、密码重置、角色保存、发货、退款审批、商品分类/商品管理、AI 配置、知识索引同步等写操作统一落审计日志
+  - 新增 `admin_operation_log` 表及后台审计查询接口 `POST /api/audit/list`
+  - 审计日志自动记录操作账号、操作类型、请求 URI、请求方法、请求参数、成功/失败状态与异常信息
+  - 对 `password`、`checkCode`、`adminToken`、`userToken` 等敏感字段做脱敏，避免日志泄漏凭证
+- AI 服务监控增强：
+  - `GET /api/ai-monitor/overview` 新增 `errorCodeStats`
+  - `GET /api/ai-monitor/overview` 新增 `toolInvokeStats`
+  - `GET /api/ai-monitor/overview` 新增 `dailyTrends`
+  - 细化展示最近 N 天按日聊天/AI Agent/降级趋势，以及按组件维度的成功/回退统计
+- 稳定性修复：
+  - `ProductInfoServiceImpl` 增加 AI 配置与监控依赖为空时的兜底逻辑，修复单测环境下语义搜索分支空指针问题
+
+### 验证记录
+- 执行命令：
+  - `mvn --% -q -pl smartMall-common,smartMall-admin -am -Dmaven.repo.local=C:\Users\15712\.m2\repository -Dmaven.test.skip=true compile`
+  - `mvn --% -q -pl smartMall-common,smartMall-admin -am -Dmaven.repo.local=C:\Users\15712\.m2\repository -Dmaven.test.skip=false -DfailIfNoTests=false test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+  - 模块测试通过。
+  - 回归中修复了 `ProductInfoServiceImplTest` 因 `AiConfigService` 未注入导致的空指针错误。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 将后台角色权限进一步下沉到更细粒度接口，例如商品分类与商品信息区分独立权限码。
+- 若继续完善系统设置主线，可与消息通知管理联动，补齐通知发布后的阅读态与站内消息触达记录。
+- 若继续增强 AI 监控，可补充耗时分位值、按错误码趋势图和组件健康检查缓存。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台统一鉴权、权限校验与操作审计闭环增强”。
+
+  - `POST /api/account/login`
+  - `GET /api/account/profile`
+  - `POST /api/account/profile/save`
+  - `POST /api/account/password/update`
+  - `POST /api/account/logout`
+  - `GET /api/address/list`
+  - `GET /api/address/detail/{addressId}`
+  - `POST /api/address/save`
+  - `POST /api/address/delete/{addressId}`
+  - `POST /api/address/default/{addressId}`
+- 用户端个人中心能力包括：
+  - 用户名/手机号注册与登录，登录后返回 `userToken`
+  - 查询当前登录用户资料，返回昵称、头像、手机号、状态与最近活跃时间
+  - 更新昵称、头像、手机号，并校验手机号唯一性
+  - 修改密码时校验旧密码
+  - 收货地址列表、详情、新增/编辑、删除、设置默认地址
+  - 删除默认地址时自动补选最新地址为默认地址，避免默认地址缺失
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" -DskipTests compile`
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+  - 模块测试通过。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 继续将用户端 `userToken` 接入购物车、订单、退款与评价接口，逐步收敛对显式 `userId` 入参的依赖。
+- 若继续完善个人中心，可补充头像文件上传、地址区域枚举、短信验证码登录与账号注销能力。
+- 若需提升安全性，可引入更强密码哈希策略与用户端统一鉴权拦截器。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：用户端注册登录与个人中心管理基础能力”。
+
+
+## 2026-03-08 功能点：管理后台消息通知管理基础能力
+
+### 本次目标
+- 按功能导图中的“系统设置 -> 发送信息管理”补齐管理后台消息通知能力。
+- 提供公告/系统消息的列表、详情、新增编辑、发布、下线、删除接口。
+- 支持面向全体用户或指定用户发送，为后续用户端消息中心与已读统计预留数据结构。
+
+### 本次实现
+- 更新 `doc/sql/smart-mall.sql`：
+  - 新增 `sys_notice_message` 表，存储后台公告与系统消息。
+  - 新增 `user_notice_read` 表，存储用户消息已读记录。
+- 在 `smartMall-common` 新增后台消息通知 DTO / VO：
+  - `AdminNoticeQueryDTO`
+  - `AdminNoticeSaveDTO`
+  - `AdminNoticeListVO`
+  - `AdminNoticeDetailVO`
+- 在 `smartMall-common` 新增消息通知领域模型与枚举：
+  - `SysNoticeMessage`
+  - `UserNoticeRead`
+  - `NoticeMessageTypeEnum`
+  - `NoticeTargetTypeEnum`
+  - `NoticePublishStatusEnum`
+- 在 `smartMall-common` 新增消息通知 Mapper / Service / ServiceImpl：
+  - `SysNoticeMessageMapper`
+  - `UserNoticeReadMapper`
+  - `SysNoticeMessageService`
+  - `UserNoticeReadService`
+  - `SysNoticeMessageServiceImpl`
+  - `UserNoticeReadServiceImpl`
+  - `AdminNoticeManageService`
+  - `AdminNoticeManageServiceImpl`
+- 在 `smartMall-admin` 新增 `NoticeManageController`，提供接口：
+  - `POST /api/notice/list`
+  - `GET /api/notice/detail/{noticeId}`
+  - `POST /api/notice/save`
+  - `POST /api/notice/publish/{noticeId}`
+  - `POST /api/notice/offline/{noticeId}`
+  - `POST /api/notice/delete/{noticeId}`
+- 消息通知管理能力包括：
+  - 按关键词、类型、发布状态、目标类型分页查询通知列表
+  - 查询通知详情，返回类型/目标/状态描述与已读人数
+  - 草稿保存、新增编辑与发布/下线状态切换
+  - 删除通知时级联清理已读记录，避免脏数据残留
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" -DskipTests compile`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 若继续沿用户侧扩展，可补齐用户端消息中心、未读数统计和已读回执接口。
+- 若继续增强运营能力，可补定时发布、失效时间、消息标签与批量导入。
+- 若继续加强后台闭环，可补统一鉴权、权限校验和操作审计日志能力。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台消息通知管理基础能力”。
+
+## 2026-03-08 功能点：管理后台统一鉴权与操作审计基础能力
+
+### 本次目标
+- 补齐后台账户权限管理后的下一步建议，接入基于 `adminToken` 的统一拦截器。
+- 增加接口级权限校验，避免权限目录只停留在静态配置层。
+- 记录后台关键操作审计日志，覆盖登录登出、账号角色维护、商品维护、订单退款处理、AI 配置和消息通知变更。
+
+### 本次实现
+- 更新 `doc/sql/smart-mall.sql`：
+  - 新增 `admin_operation_log` 表，用于记录后台操作审计日志。
+- 在 `smartMall-common` 新增后台安全与审计基础设施：
+  - `AdminSecurityContext`
+  - `AdminAuthInterceptor`
+  - `AdminPermission`
+  - `AdminAuditLog`
+  - `AdminAuditAspect`
+  - `AdminOperationTypeEnum`
+- 在 `smartMall-common` 新增后台审计日志领域模型与服务：
+  - `AdminOperationLog`
+  - `AdminOperationLogMapper`
+  - `AdminOperationLogService`
+  - `AdminOperationLogServiceImpl`
+  - `AdminOperationLogQueryDTO`
+  - `AdminOperationLogVO`
+  - `AdminAuditManageService`
+  - `AdminAuditManageServiceImpl`
+- 在 `smartMall-admin` 新增：
+  - `AdminWebMvcConfig` 注册后台统一拦截器
+  - `AuditLogController` 提供 `POST /api/audit/list`
+- 扩展后台控制器权限与审计：
+  - 为数据概览、商品分类/商品管理、订单退款、评价、用户、AI 配置、知识库维护、AI 监控、账户权限、消息通知、审计日志接口补齐权限注解
+  - 为关键写操作补齐审计注解，统一写入操作日志表
+- 扩展 `AdminPermissionEnum`：
+  - 新增 `product:manage`
+  - 新增 `notice:manage`
+  - 新增 `audit:log`
+- 修复运行时问题：
+  - `AccountController` 资料查询/退出登录改为优先走统一鉴权上下文，兼容 Header / Query 方式传递 `adminToken`
+  - `RedisComponent` 修复验证码 key 读取与清理的前缀兼容问题，避免后台登录验证码校验异常
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" -DskipTests compile`
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+  - 模块测试通过。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 若继续增强后台安全，可补权限码与菜单树绑定、细粒度按钮权限与导出权限控制。
+- 若继续增强审计能力，可补登录失败次数统计、IP/UA 记录、按日趋势与异常告警。
+- 若继续增强监控能力，可将 AI 工具级成功率、错误码分布与耗时趋势纳入统一审计看板。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台统一鉴权与操作审计基础能力”。
+
+## 2026-03-08 功能点：管理后台权限校验与操作审计基础能力
+
+### 本次目标
+- 承接“用户账户与权限管理”后的下一步建议，补齐基于 `adminToken` 的后台统一鉴权与接口级权限校验。
+- 为后台关键操作补充审计日志，覆盖登录、用户状态调整、AI 配置、知识库维护与消息通知等敏感操作。
+- 提供后台审计日志查询接口，方便排查配置变更、权限操作和运营动作。
+
+### 本次实现
+- 在 `doc/sql/smart-mall.sql` 新增 `admin_operation_log` 表：
+  - 存储后台操作审计日志，包括操作人、请求地址、请求方法、操作结果与错误信息。
+- 在 `smartMall-common` 新增后台鉴权与审计基础设施：
+  - `AdminPermission`
+  - `AdminAuditLog`
+  - `AdminSecurityContext`
+  - `AdminAuthInterceptor`
+  - `AdminAuditAspect`
+- 在 `smartMall-common` 新增后台审计领域模型与服务：
+  - `AdminOperationLog`
+  - `AdminOperationLogMapper`
+  - `AdminOperationLogService`
+  - `AdminOperationLogServiceImpl`
+  - `AdminAuditManageService`
+  - `AdminAuditManageServiceImpl`
+- 在 `smartMall-common` 新增后台审计 DTO / VO / 枚举：
+  - `AdminOperationLogQueryDTO`
+  - `AdminOperationLogVO`
+  - `AdminOperationTypeEnum`
+- 在 `smartMall-admin` 新增配置与控制器：
+  - `AdminWebMvcConfig`
+  - `AuditLogController`
+- 在后台控制器补充权限与审计声明：
+  - 通过 `@AdminPermission` 约束数据看板、用户管理、账户权限、AI 配置、知识库维护、AI 监控、消息通知等后台接口
+  - 通过 `@AdminAuditLog` 记录保存配置、状态更新、发布/下线通知等关键操作
+- 后台权限与审计能力包括：
+  - 从请求头 `adminToken`、`Authorization: Bearer ...` 或请求参数中解析后台令牌
+  - 自动加载当前后台账号上下文，并校验是否具备接口声明的权限编码
+  - 超级管理员与配置管理员默认拥有全部权限
+  - 分页查询后台审计日志，支持按账号名、操作类型、操作结果与关键词筛选
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" -DskipTests compile`
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+  - 模块测试通过。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 将权限点继续收敛到按钮/菜单级别，避免前端仅靠路由名做粗粒度控制。
+- 补充后台登录成功/失败次数统计、异常 IP 告警和更细粒度的安全审计标签。
+- 若继续沿系统设置主线推进，可补齐消息通知管理与用户消息中心。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台权限校验与操作审计基础能力”。
+
+## 2026-03-08 功能点：管理后台消息通知管理与用户消息中心基础能力
+
+### 本次目标
+- 按功能导图中的“系统设置 / 发送信息管理”补齐后台消息通知管理能力。
+- 为用户端个人中心补充“我的消息”接口，承接后台已发布的公告与系统消息。
+- 打通后台发布、用户查看、已读统计的基础闭环。
+
+### 本次实现
+- 在 `doc/sql/smart-mall.sql` 新增消息中心相关表：
+  - `sys_notice_message`
+  - `user_notice_read`
+- 在 `smartMall-common` 新增消息通知领域模型与服务：
+  - `SysNoticeMessage`
+  - `UserNoticeRead`
+  - `SysNoticeMessageMapper`
+  - `UserNoticeReadMapper`
+  - `SysNoticeMessageService`
+  - `UserNoticeReadService`
+  - `SysNoticeMessageServiceImpl`
+  - `UserNoticeReadServiceImpl`
+  - `AdminNoticeManageService`
+  - `AdminNoticeManageServiceImpl`
+  - `MallMessageCenterService`
+  - `MallMessageCenterServiceImpl`
+- 在 `smartMall-common` 新增消息通知 DTO / VO / 枚举：
+  - `AdminNoticeQueryDTO`
+  - `AdminNoticeSaveDTO`
+  - `MessageQueryDTO`
+  - `AdminNoticeListVO`
+  - `AdminNoticeDetailVO`
+  - `MallMessageVO`
+  - `NoticeMessageTypeEnum`
+  - `NoticePublishStatusEnum`
+  - `NoticeTargetTypeEnum`
+- 在 `smartMall-admin` 新增控制器：
+  - `NoticeManageController`
+- 在 `smartMall-web` 新增控制器：
+  - `MallMessageController`
+- 新增后台接口：
+  - `POST /api/notice/list`
+  - `GET /api/notice/detail/{noticeId}`
+  - `POST /api/notice/save`
+  - `POST /api/notice/publish/{noticeId}`
+  - `POST /api/notice/offline/{noticeId}`
+  - `POST /api/notice/delete/{noticeId}`
+- 新增用户端接口：
+  - `POST /api/message/list`
+  - `GET /api/message/detail/{noticeId}`
+  - `POST /api/message/read/{noticeId}`
+  - `GET /api/message/unreadCount`
+- 消息中心能力包括：
+  - 后台维护草稿、发布、下线状态，支持面向全体用户或指定用户发送消息
+  - 自动生成消息摘要，并统计每条通知的已读用户数
+  - 用户端按已发布消息范围拉取消息列表、查看详情、标记已读与查询未读数
+  - 用户端消息读取严格基于 `userToken` 校验，避免读取非目标用户消息
+
+### 验证记录
+- 执行命令：
+  - `mvn -q "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 全项目编译与测试通过。
+
+### 当前影响范围
+- `doc/sql/smart-mall.sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+- `smartMall-web`
+
+### 下一步建议
+- 将后台消息通知与订单状态变更、退款进度、活动运营节点做自动联动，减少人工发布成本。
+- 为用户消息中心补充批量已读、按类型筛选和站内信跳转配置。
+- 若后续引入短信/邮件/推送渠道，可扩展统一消息分发与发送结果回执能力。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台消息通知管理与用户消息中心基础能力”。
+
+## 2026-03-08 功能点：管理后台鉴权迁移 Sa-Token 框架
+
+### 本次目标
+- 将后台自定义 `adminToken + 拦截器 + @AdminPermission` 鉴权方式迁移到 `Sa-Token`。
+- 保持现有后台接口地址与 `adminToken` 令牌名称不变，降低前端联调成本。
+- 让接口级权限校验继续复用现有角色/权限数据，不改变后台账号、角色、权限模型。
+
+### 本次实现
+- 在 `pom.xml` 与 `smartMall-common/pom.xml` 引入 `sa-token-spring-boot3-starter`。
+- 在 `smartMall-common` 新增 / 更新 `Sa-Token` 接入：
+  - `AdminStpInterfaceImpl` 改为实际提供角色与权限编码。
+  - `AdminAuditAspect` 改为从 `Sa-Token` 登录态解析当前后台账号。
+- 在 `smartMall-admin` 更新后台登录控制器：
+  - `POST /api/account/login` 改为通过 `StpUtil.login` 签发登录态。
+  - `GET /api/account/profile`、`POST /api/account/logout` 改为通过 `Sa-Token` 校验登录态。
+- 在后台控制器中将自定义 `@AdminPermission` 替换为 `@SaCheckPermission`：
+  - 覆盖数据概览、商品管理、订单管理、评价管理、用户管理、权限管理、AI 配置、知识库维护、消息通知、审计日志等接口。
+- 下线旧的自定义鉴权链路：
+  - 删除 `AdminPermission`
+  - 删除 `AdminAuthInterceptor`
+  - 删除 `AdminSecurityContext`
+  - 置空 `AdminWebMvcConfig`，避免旧拦截链继续生效。
+- 更新 `smartMall-admin/src/main/resources/application.yml`：
+  - 保留 `adminToken` 作为 `Sa-Token` 的 token 名称，并开启 Header / Param 读取。
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=D:\apache-maven-3.8.8\repository" -DskipTests compile`
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=D:\apache-maven-3.8.8\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：
+  - 编译通过。
+  - 模块测试通过。
+
+### 当前影响范围
+- `pom.xml`
+- `doc/development-log.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 若后续需要把用户端统一登录态也框架化，可继续引入 `Sa-Token` 的多账号体系，收敛 `userToken` 管理。
+- 可继续补后台按钮级权限与会话踢出、同端互斥登录等高级安全能力。
+
+### 提交记录
+- Git Commit: 本次功能点提交建议为“完成功能点：管理后台鉴权迁移 Sa-Token 框架”。

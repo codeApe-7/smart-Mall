@@ -368,14 +368,14 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
     }
 
     private boolean shouldUseSemanticSearch(ProductQueryDTO queryDTO) {
-        return aiConfigService.getProductSearchConfig().isSemanticEnabled()
+        return getProductSearchConfig().isSemanticEnabled()
                 && !Boolean.FALSE.equals(queryDTO.getSemanticSearch())
                 && StringTools.isNotEmpty(queryDTO.getProductName());
     }
 
     private PageResultVO<ProductInfoListVO> loadVisibleProductListBySemanticSearch(ProductQueryDTO queryDTO) {
         try {
-            ProductSearchProperties productSearchProperties = aiConfigService.getProductSearchConfig();
+            ProductSearchProperties productSearchProperties = getProductSearchConfig();
             JSONObject requestJson = buildSemanticSearchRequest(queryDTO, productSearchProperties);
             Request request = new Request.Builder()
                     .url(buildElasticsearchSearchUrl(productSearchProperties))
@@ -383,7 +383,7 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
                     .build();
             try (Response response = okHttpClient.newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
-                    aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "http_status",
+                    recordAiMonitorEvent("semantic_search", "FALLBACK", "http_status",
                             "semantic search fallback by http status " + response.code(), null, null);
                     log.warn("semantic search fallback to db, httpStatus={}", response.code());
                     return null;
@@ -396,34 +396,50 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
                 long totalCount = extractSemanticSearchTotal(hitsJson);
                 List<String> productIds = extractSemanticProductIds(hitsJson);
                 if (productIds.isEmpty()) {
-                    aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "empty_result",
+                    recordAiMonitorEvent("semantic_search", "FALLBACK", "empty_result",
                             "semantic search returned empty result", null, null);
                     log.info("semantic search returned empty result, fallback to db, keyword={}", queryDTO.getProductName());
                     return null;
                 }
                 List<ProductInfoListVO> records = loadVisibleProductListByIds(productIds);
                 if (records.isEmpty()) {
-                    aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "ids_not_found",
+                    recordAiMonitorEvent("semantic_search", "FALLBACK", "ids_not_found",
                             "semantic search ids not found in db", null, null);
                     log.info("semantic search ids not found in db, fallback to db, keyword={}", queryDTO.getProductName());
                     return null;
                 }
-                aiMonitorEventService.recordEvent("semantic_search", "SUCCESS", "semantic_search_success",
+                recordAiMonitorEvent("semantic_search", "SUCCESS", "semantic_search_success",
                         "semantic search succeeded", null, null);
                 log.info("semantic search success, keyword={}, totalCount={}, recordCount={}",
                         queryDTO.getProductName(), totalCount, records.size());
                 return new PageResultVO<>(queryDTO.getPageNo(), queryDTO.getPageSize(), totalCount, records);
             }
         } catch (Exception e) {
-            aiMonitorEventService.recordEvent("semantic_search", "FALLBACK", "exception",
+            recordAiMonitorEvent("semantic_search", "FALLBACK", "exception",
                     "semantic search fallback by exception: " + e.getClass().getSimpleName(), null, null);
             log.warn("semantic search fallback to db, keyword={}", queryDTO.getProductName(), e);
             return null;
         }
     }
 
+    private ProductSearchProperties getProductSearchConfig() {
+        if (aiConfigService == null) {
+            return new ProductSearchProperties();
+        }
+        ProductSearchProperties productSearchProperties = aiConfigService.getProductSearchConfig();
+        return productSearchProperties == null ? new ProductSearchProperties() : productSearchProperties;
+    }
+
+    private void recordAiMonitorEvent(String eventSource, String eventType, String eventCode,
+                                      String eventMessage, String userId, String sessionId) {
+        if (aiMonitorEventService == null) {
+            return;
+        }
+        aiMonitorEventService.recordEvent(eventSource, eventType, eventCode, eventMessage, userId, sessionId);
+    }
+
     private JSONObject buildSemanticSearchRequest(ProductQueryDTO queryDTO,
-                                                  ProductSearchProperties productSearchProperties) {
+                                                   ProductSearchProperties productSearchProperties) {
         JSONObject root = new JSONObject();
         root.put("from", queryDTO.getOffset());
         root.put("size", normalizeSemanticCandidateSize(queryDTO.getPageSize(), productSearchProperties));

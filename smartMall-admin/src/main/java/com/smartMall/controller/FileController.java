@@ -1,8 +1,11 @@
 package com.smartMall.controller;
 
 import cn.hutool.core.io.FileUtil;
+import com.smartMall.annotation.AdminAuditLog;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.smartMall.entities.config.AppConfig;
 import com.smartMall.entities.constant.Constants;
+import com.smartMall.entities.enums.AdminOperationTypeEnum;
 import com.smartMall.entities.enums.ResponseCodeEnum;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.exception.BusinessException;
@@ -10,8 +13,9 @@ import com.smartMall.utils.FileUtils;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,20 +35,21 @@ import java.io.OutputStream;
  * @date 2024/11/30 12:03
  */
 @RestController
-@Slf4j
 @RequestMapping("/file")
 @Validated
+@SaCheckPermission("product:manage")
 public class FileController {
+
+    private static final Logger log = LoggerFactory.getLogger(FileController.class);
 
     @Resource
     private AppConfig appConfig;
 
     @Resource
-    private FileUtils FileUtils;
-    @Autowired
     private FileUtils fileUtils;
 
     @PostMapping("/uploadImage")
+    @AdminAuditLog(value = "上传商品图片", type = AdminOperationTypeEnum.PRODUCT)
     public ResponseVO<String> uploadImage(@NotNull MultipartFile file, Boolean createThumbnail) throws IOException {
         String filePath = fileUtils.uploadImage(file, createThumbnail);
         return ResponseVO.success(filePath);
@@ -85,3 +90,4 @@ public class FileController {
     }
 
 }
+

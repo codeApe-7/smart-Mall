@@ -8,6 +8,7 @@ import com.smartMall.entities.domain.AssistantChatLog;
 import com.smartMall.entities.vo.AdminAiMonitorMetricVO;
 import com.smartMall.entities.vo.AdminAiMonitorOverviewVO;
 import com.smartMall.entities.vo.AdminAiMonitorRecentEventVO;
+import com.smartMall.entities.vo.AdminAiMonitorTrendVO;
 import com.smartMall.entities.vo.AdminAiServiceStatusVO;
 import com.smartMall.service.AdminAiMonitorService;
 import com.smartMall.service.AdminKnowledgeManageService;
@@ -93,6 +94,9 @@ public class AdminAiMonitorServiceImpl implements AdminAiMonitorService {
         overviewVO.setKnowledgeIndexSummary(adminKnowledgeManageService.getIndexSummary());
         overviewVO.setServiceStatuses(buildServiceStatuses(overviewVO.getKnowledgeIndexSummary()));
         overviewVO.setFallbackStats(buildFallbackStats(recentSince));
+        overviewVO.setErrorCodeStats(buildErrorCodeStats(recentSince));
+        overviewVO.setToolInvokeStats(buildToolInvokeStats(recentSince));
+        overviewVO.setDailyTrends(buildDailyTrends(chatLogs, recentSince));
         overviewVO.setRecentEvents(recentEvents.stream().map(this::buildRecentEventVO).toList());
         return overviewVO;
     }
@@ -137,16 +141,65 @@ public class AdminAiMonitorServiceImpl implements AdminAiMonitorService {
     }
 
     private List<AdminAiMonitorMetricVO> buildFallbackStats(Date recentSince) {
-        List<AiMonitorEvent> fallbackEvents = aiMonitorEventService.list(new LambdaQueryWrapper<AiMonitorEvent>()
-                .eq(AiMonitorEvent::getEventType, "FALLBACK")
-                .ge(AiMonitorEvent::getCreateTime, recentSince)
-                .orderByDesc(AiMonitorEvent::getCreateTime));
+        List<AiMonitorEvent> fallbackEvents = loadEventsByType(recentSince, "FALLBACK");
         Map<String, Long> countMap = fallbackEvents.stream()
                 .collect(Collectors.groupingBy(AiMonitorEvent::getEventCode, Collectors.counting()));
         return countMap.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .map(entry -> buildMetric(entry.getKey(), formatMetricName(entry.getKey()), entry.getValue()))
                 .toList();
+    }
+
+    private List<AdminAiMonitorMetricVO> buildErrorCodeStats(Date recentSince) {
+        return loadEventsByType(recentSince, "FALLBACK").stream()
+                .collect(Collectors.groupingBy(AiMonitorEvent::getEventCode, Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(entry -> buildMetric(entry.getKey(), formatMetricName(entry.getKey()), entry.getValue()))
+                .toList();
+    }
+
+    private List<AdminAiMonitorMetricVO> buildToolInvokeStats(Date recentSince) {
+        return aiMonitorEventService.list(new LambdaQueryWrapper<AiMonitorEvent>()
+                        .ge(AiMonitorEvent::getCreateTime, recentSince)
+                        .orderByDesc(AiMonitorEvent::getCreateTime)).stream()
+                .collect(Collectors.groupingBy(item -> item.getEventSource() + ":" + item.getEventType(), Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(entry -> buildMetric(entry.getKey(), formatToolMetricName(entry.getKey()), entry.getValue()))
+                .toList();
+    }
+
+    private List<AdminAiMonitorTrendVO> buildDailyTrends(List<AssistantChatLog> chatLogs, Date recentSince) {
+        LocalDate startDate = recentSince.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        Map<LocalDate, List<AssistantChatLog>> chatMap = chatLogs.stream()
+                .filter(item -> item.getCreateTime() != null && !item.getCreateTime().before(recentSince))
+                .collect(Collectors.groupingBy(item -> item.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()));
+        Map<LocalDate, Long> fallbackMap = loadEventsByType(recentSince, "FALLBACK").stream()
+                .filter(item -> item.getCreateTime() != null)
+                .collect(Collectors.groupingBy(item -> item.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate(), Collectors.counting()));
+        return java.util.stream.IntStream.range(0, Math.max(1, adminAiMonitorProperties.getRecentDays()))
+                .mapToObj(offset -> startDate.plusDays(offset))
+                .map(date -> buildDailyTrend(date, chatMap.getOrDefault(date, List.of()), fallbackMap.getOrDefault(date, 0L)))
+                .toList();
+    }
+
+    private AdminAiMonitorTrendVO buildDailyTrend(LocalDate date, List<AssistantChatLog> dayLogs, Long fallbackCount) {
+        AdminAiMonitorTrendVO trendVO = new AdminAiMonitorTrendVO();
+        trendVO.setDate(date.toString());
+        trendVO.setChatCount((long) dayLogs.size());
+        trendVO.setAiAgentChatCount(dayLogs.stream()
+                .filter(item -> Objects.equals(item.getIntentType(), AI_AGENT_INTENT))
+                .count());
+        trendVO.setFallbackCount(fallbackCount);
+        return trendVO;
+    }
+
+    private List<AiMonitorEvent> loadEventsByType(Date recentSince, String eventType) {
+        return aiMonitorEventService.list(new LambdaQueryWrapper<AiMonitorEvent>()
+                .eq(StringTools.isNotEmpty(eventType), AiMonitorEvent::getEventType, eventType)
+                .ge(AiMonitorEvent::getCreateTime, recentSince)
+                .orderByDesc(AiMonitorEvent::getCreateTime));
     }
 
     private AdminAiMonitorRecentEventVO buildRecentEventVO(AiMonitorEvent event) {
@@ -187,7 +240,23 @@ public class AdminAiMonitorServiceImpl implements AdminAiMonitorService {
             case "empty_result" -> "搜索无结果降级";
             case "ids_not_found" -> "索引数据不一致降级";
             case "exception" -> "搜索异常降级";
+            case "agent_success" -> "助手调用成功";
+            case "semantic_search_success" -> "语义搜索成功";
             default -> eventCode == null ? "未知事件" : eventCode.toLowerCase(Locale.ROOT);
+        };
+    }
+
+    private String formatToolMetricName(String metricKey) {
+        if (StringTools.isEmpty(metricKey)) {
+            return "未知组件";
+        }
+        String[] parts = metricKey.split(":", 2);
+        String source = parts.length > 0 ? parts[0] : "unknown";
+        String type = parts.length > 1 ? parts[1] : "UNKNOWN";
+        return switch (source) {
+            case "assistant_agent" -> "智能助手 - " + type;
+            case "semantic_search" -> "语义搜索 - " + type;
+            default -> source.toLowerCase(Locale.ROOT) + " - " + type;
         };
     }
 

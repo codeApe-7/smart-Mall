@@ -300,6 +300,9 @@ public class AdminAuthorityManageServiceImpl implements AdminAuthorityManageServ
             account = loadAccountByName(principal);
         }
         if (account != null) {
+            if (!Objects.equals(account.getStatus(), AdminAccountStatusEnum.ENABLED.getStatus())) {
+                throw new BusinessException(ResponseCodeEnum.FORBIDDEN, "admin account is disabled");
+            }
             return buildCurrentAccountVO(account, loadRolesByAccountId(account.getAccountId()));
         }
         if (principal.equalsIgnoreCase(appConfig.getAdminAccount())) {

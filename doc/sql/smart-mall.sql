@@ -237,15 +237,34 @@ CREATE TABLE `user_account` (
     `nickname` varchar(64) DEFAULT NULL COMMENT '昵称',
     `avatar` varchar(500) DEFAULT NULL COMMENT '头像',
     `phone` varchar(30) DEFAULT NULL COMMENT '手机号',
+    `password` varchar(64) DEFAULT NULL COMMENT '登录密码(MD5)',
     `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0:禁用 1:启用',
     `remark` varchar(255) DEFAULT NULL COMMENT '备注',
     `create_time` datetime DEFAULT NULL COMMENT '创建时间',
     `update_time` datetime DEFAULT NULL COMMENT '更新时间',
     `last_active_time` datetime DEFAULT NULL COMMENT '最近活跃时间',
     PRIMARY KEY (`user_id`) USING BTREE,
+    UNIQUE KEY `uk_username` (`username`) USING BTREE,
     KEY `idx_status` (`status`) USING BTREE,
     KEY `idx_phone` (`phone`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户账户表';
+
+CREATE TABLE `user_delivery_address` (
+    `address_id` varchar(32) NOT NULL COMMENT '地址ID',
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `receiver_name` varchar(50) NOT NULL COMMENT '收货人姓名',
+    `receiver_phone` varchar(30) NOT NULL COMMENT '收货人手机号',
+    `province` varchar(50) NOT NULL COMMENT '省份',
+    `city` varchar(50) NOT NULL COMMENT '城市',
+    `region` varchar(50) DEFAULT NULL COMMENT '区县',
+    `detail_address` varchar(255) NOT NULL COMMENT '详细地址',
+    `address_label` varchar(32) DEFAULT NULL COMMENT '地址标签',
+    `default_address` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0:否 1:是',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`address_id`) USING BTREE,
+    KEY `idx_user_default` (`user_id`, `default_address`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户收货地址表';
 
 CREATE TABLE `sys_ai_config` (
     `config_id` varchar(32) NOT NULL COMMENT '配置ID',
@@ -316,3 +335,49 @@ CREATE TABLE `sys_admin_account_role` (
     UNIQUE KEY `uk_account_role` (`account_id`, `role_id`) USING BTREE,
     KEY `idx_role_id` (`role_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='后台管理员账号角色关联表';
+
+CREATE TABLE `sys_notice_message` (
+    `notice_id` varchar(32) NOT NULL COMMENT '通知ID',
+    `notice_title` varchar(120) NOT NULL COMMENT '通知标题',
+    `notice_summary` varchar(255) DEFAULT NULL COMMENT '通知摘要',
+    `notice_content` text COMMENT '通知内容',
+    `message_type` varchar(32) NOT NULL COMMENT '通知类型',
+    `target_type` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0:全体用户 1:指定用户',
+    `target_user_id` varchar(32) DEFAULT NULL COMMENT '目标用户ID',
+    `publish_status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0:草稿 1:已发布 2:已下线',
+    `publish_time` datetime DEFAULT NULL COMMENT '发布时间',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`notice_id`) USING BTREE,
+    KEY `idx_publish_status` (`publish_status`) USING BTREE,
+    KEY `idx_target_user` (`target_user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='系统消息通知表';
+
+CREATE TABLE `user_notice_read` (
+    `read_id` varchar(32) NOT NULL COMMENT '已读记录ID',
+    `notice_id` varchar(32) NOT NULL COMMENT '通知ID',
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `read_time` datetime DEFAULT NULL COMMENT '已读时间',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`read_id`) USING BTREE,
+    UNIQUE KEY `uk_notice_user` (`notice_id`, `user_id`) USING BTREE,
+    KEY `idx_user_id` (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户通知已读记录表';
+
+CREATE TABLE `admin_operation_log` (
+    `log_id` varchar(32) NOT NULL COMMENT '日志ID',
+    `account_id` varchar(32) DEFAULT NULL COMMENT '后台账号ID',
+    `account_name` varchar(64) DEFAULT NULL COMMENT '后台账号名',
+    `operation_type` varchar(32) DEFAULT NULL COMMENT '操作类型',
+    `operation_name` varchar(120) DEFAULT NULL COMMENT '操作名称',
+    `request_uri` varchar(255) DEFAULT NULL COMMENT '请求地址',
+    `request_method` varchar(20) DEFAULT NULL COMMENT '请求方法',
+    `request_param` text COMMENT '请求参数',
+    `operation_status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0:失败 1:成功',
+    `error_message` varchar(500) DEFAULT NULL COMMENT '错误信息',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`log_id`) USING BTREE,
+    KEY `idx_account_time` (`account_id`, `create_time`) USING BTREE,
+    KEY `idx_operation_type_time` (`operation_type`, `create_time`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='后台操作审计日志表';
+
