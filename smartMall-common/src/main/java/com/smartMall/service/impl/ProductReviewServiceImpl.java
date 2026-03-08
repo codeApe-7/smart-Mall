@@ -162,7 +162,9 @@ public class ProductReviewServiceImpl extends ServiceImpl<ProductReviewMapper, P
         vo.setUserId(review.getUserId());
         vo.setRating(review.getRating());
         vo.setContent(review.getContent());
+        vo.setReplyContent(review.getReplyContent());
         vo.setCreateTime(review.getCreateTime());
+        vo.setReplyTime(review.getReplyTime());
         OrderItem orderItem = orderItemMap.get(review.getItemId());
         if (orderItem != null) {
             vo.setProductName(orderItem.getProductName());
@@ -179,7 +181,9 @@ public class ProductReviewServiceImpl extends ServiceImpl<ProductReviewMapper, P
         vo.setUserId(review.getUserId());
         vo.setRating(review.getRating());
         vo.setContent(review.getContent());
+        vo.setReplyContent(review.getReplyContent());
         vo.setCreateTime(review.getCreateTime());
+        vo.setReplyTime(review.getReplyTime());
         return vo;
     }
 }

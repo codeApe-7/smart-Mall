@@ -7,16 +7,18 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 商品评价视图。
+ * Admin review info VO.
  */
 @Data
-public class ProductReviewVO implements Serializable {
+public class AdminReviewInfoVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private String reviewId;
 
     private String orderId;
+
+    private String orderNo;
 
     private String itemId;
 

@@ -188,6 +188,8 @@ CREATE TABLE `product_review` (
     `rating` int(11) NOT NULL COMMENT '评分(1-5)',
     `content` text COMMENT '评价内容',
     `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `reply_content` varchar(500) DEFAULT NULL COMMENT '商家回复内容',
+    `reply_time` datetime DEFAULT NULL COMMENT '商家回复时间',
     PRIMARY KEY (`review_id`) USING BTREE,
     UNIQUE KEY `uk_item_id` (`item_id`) USING BTREE,
     KEY `idx_order_id` (`order_id`) USING BTREE,

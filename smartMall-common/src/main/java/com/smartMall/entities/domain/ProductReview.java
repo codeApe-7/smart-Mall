@@ -36,8 +36,14 @@ public class ProductReview implements Serializable {
     @TableField("content")
     private String content;
 
+    @TableField("reply_content")
+    private String replyContent;
+
     @TableField("create_time")
     private Date createTime;
+
+    @TableField("reply_time")
+    private Date replyTime;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

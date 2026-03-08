@@ -1,5 +1,67 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：管理后台订单评价管理基础能力
+
+### 本次目标
+- 按功能导图补齐管理后台“订单评价”能力，承接订单评价与用户反馈场景。
+- 提供后台评价列表、评价详情、商家回复和删除评价接口。
+- 保持前后台评价数据结构一致，避免维护两套评价模型。
+
+### 本次实现
+- 在 `smartMall-common` 新增后台订单评价管理 DTO：
+  - `AdminReviewQueryDTO`
+  - `AdminReviewReplyDTO`
+- 在 `smartMall-common` 新增后台订单评价管理 VO：
+  - `AdminReviewInfoVO`
+- 在 `smartMall-common` 新增后台订单评价管理 Service / ServiceImpl：
+  - `AdminReviewManageService`
+  - `AdminReviewManageServiceImpl`
+- 后台订单评价管理能力包括：
+  - 分页查询全量评价，支持按订单号、商品ID、用户ID、评分、是否已回复过滤
+  - 查询单个评价详情，补充订单号和商品名称
+  - 商家回复评价，写入回复内容和回复时间
+  - 删除评价，便于后台处理违规或无效评价
+- 扩展 `product_review` 表结构：
+  - 新增 `reply_content`
+  - 新增 `reply_time`
+- 修改前台评价返回结构：
+  - `ProductReviewVO` 增加商家回复内容和回复时间
+  - `ProductReviewServiceImpl` 在订单评价列表、商品评价列表中返回回复信息
+- 在 `smartMall-admin` 新增控制器：
+  - `ReviewManageController`
+- 新增后台接口：
+  - `POST /api/review/list`
+  - `GET /api/review/detail/{reviewId}`
+  - `POST /api/review/reply`
+  - `POST /api/review/delete/{reviewId}`
+- 更新 `apifox_requests.md`：
+  - 新增管理后台订单评价管理接口测试文档
+- 更新 `doc/sql/smart-mall.sql`：
+  - 补充评价表回复字段定义
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `doc/sql/smart-mall.sql`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+- `smartMall-web`
+
+### 下一步建议
+- 按后台主线继续补齐管理后台用户管理基础能力，例如用户列表、下单/退款概览、启用/禁用状态维护。
+- 若要继续完善订单链路后台能力，可补充售后处理视图、评价敏感词审核或批量回复能力。
+- 若后台运营侧需要更强配置能力，可继续补消息通知管理或提示词/公告维护能力。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：管理后台订单评价管理基础能力"。
+
 ## 2026-03-08 功能点：管理后台订单管理基础能力
 
 ### 本次目标

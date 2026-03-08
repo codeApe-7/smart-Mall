@@ -1,5 +1,117 @@
 # Apifox 接口调试文档 - 商品属性管理
 
+# Apifox 接口调试文档 - 管理后台订单评价管理
+
+以下是针对 `ReviewManageController` 新增接口的调试请求示例。
+
+## 1. 分页查询评价列表
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/review/list`
+- **Content-Type**: `application/json`
+
+### Body 示例
+```json
+{
+  "pageNo": 1,
+  "pageSize": 10,
+  "orderNo": "20260308",
+  "productId": "18888888888888888888888888888888",
+  "userId": "10001",
+  "rating": 5,
+  "replied": false
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/review/list' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "pageNo": 1,
+  "pageSize": 10,
+  "orderNo": "20260308",
+  "rating": 5,
+  "replied": false
+}'
+```
+
+### 成功断言
+- `code = 200`
+- `data.records` 返回评价列表
+- 列表项包含 `reviewId`、`orderNo`、`productName`、`replyContent`、`replyTime`
+
+## 2. 查询评价详情
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/review/detail/{reviewId}`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/review/detail/REPLACE_WITH_REVIEW_ID'
+```
+
+### 成功断言
+- `code = 200`
+- `data.reviewId` 与请求参数一致
+- `data.orderNo`、`data.productName`、`data.content` 正常返回
+
+## 3. 回复评价
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/review/reply`
+- **Content-Type**: `application/json`
+
+### Body 示例
+```json
+{
+  "reviewId": "REPLACE_WITH_REVIEW_ID",
+  "replyContent": "感谢您的反馈，我们已经记录并持续优化。"
+}
+```
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/review/reply' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "reviewId": "REPLACE_WITH_REVIEW_ID",
+  "replyContent": "感谢您的反馈，我们已经记录并持续优化。"
+}'
+```
+
+### 成功断言
+- `code = 200`
+- 再次查询 `GET /api/review/detail/{reviewId}` 时，`replyContent` 与 `replyTime` 已更新
+
+## 4. 删除评价
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/review/delete/{reviewId}`
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6061/api/review/delete/REPLACE_WITH_REVIEW_ID'
+```
+
+### 成功断言
+- `code = 200`
+- 再次查询该评价详情时返回“review not found”
+
+## 5. 测试用例
+
+| 用例ID | 接口 | 场景 | 请求示例 | 预期结果 |
+| --- | --- | --- | --- | --- |
+| ADMIN-REVIEW-01 | `POST /api/review/list` | 按评分和未回复状态筛选评价 | `{"pageNo":1,"pageSize":10,"rating":5,"replied":false}` | 返回 `code=200`，列表只包含五星且未回复评价 |
+| ADMIN-REVIEW-02 | `POST /api/review/list` | 按订单号模糊查询评价 | `{"pageNo":1,"pageSize":10,"orderNo":"20260308"}` | 返回 `code=200`，列表中订单号匹配条件 |
+| ADMIN-REVIEW-03 | `GET /api/review/detail/{reviewId}` | 查询评价详情 | 路径传真实 `reviewId` | 返回评价内容、订单号、商品名称 |
+| ADMIN-REVIEW-04 | `POST /api/review/reply` | 商家回复评价 | `{"reviewId":"真实ID","replyContent":"感谢反馈"}` | 返回 `code=200`，详情接口能查到回复内容和回复时间 |
+| ADMIN-REVIEW-05 | `POST /api/review/reply` | 缺少回复内容 | `{"reviewId":"真实ID","replyContent":""}` | 返回参数校验错误 |
+| ADMIN-REVIEW-06 | `POST /api/review/delete/{reviewId}` | 删除评价 | 路径传真实 `reviewId` | 返回 `code=200`，详情接口提示评价不存在 |
+| ADMIN-REVIEW-07 | `GET /api/review/detail/{reviewId}` | 查询不存在评价 | 路径传不存在 `reviewId` | 返回 `review not found` |
+
+---
+
 以下是针对 `SysCategoryController` 中新增和修改的接口的调试请求示例。
 
 ## 1. 查询分类列表（带商品属性）
