@@ -1,5 +1,54 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：用户偏好自动刷新与首页个性化推荐接口
+
+### 本次目标
+- 减少用户偏好档案对手工刷新接口的依赖，在关键用户行为后自动刷新偏好数据。
+- 基于既有偏好档案能力补齐首页个性化推荐入口，支持用户首页直接读取偏好推荐结果。
+- 补充接口测试文档，覆盖评价提交后的偏好联动与首页个性化推荐场景。
+
+### 本次实现
+- 在 `smartMall-common` 新增异步执行配置：
+  - `AsyncConfig` 提供 `userPreferenceRefreshExecutor`
+- 新增偏好异步刷新触发器：
+  - `UserPreferenceRefreshTrigger`
+  - `UserPreferenceRefreshTriggerImpl`
+- 修改 `ProductReviewServiceImpl.submitReview()`：
+  - 评价提交成功后异步触发 `refreshUserPreference`
+  - 兼容“评价提交”与“最后一条评价导致订单完成”的联动刷新场景
+- 修改 `ProductInfoServiceImpl`：
+  - `loadPersonalizedRecommendProducts(userId, limit)` 在用户无偏好档案时先尝试自动刷新，再决定是否回退到通用推荐
+  - `normalizeRecommendLimit()` 复用 `smart-mall.preference.default-recommend-limit` 配置项
+- 修改 `MallProductController`：
+  - 扩展 `GET /api/product/recommend`
+  - 新增可选参数 `userId`
+  - 未传 `userId` 时保持原有通用推荐逻辑，传入 `userId` 时返回首页个性化推荐结果
+- 更新 `apifox_requests.md`：
+  - 补充评价提交后的偏好联动测试用例
+  - 补充首页个性化推荐测试用例
+- 本次未新增数据库表结构，`doc/sql/smart-mall.sql` 无需变更
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 在订单创建、支付成功、确认收货等关键节点继续补齐偏好自动刷新触发点，降低推荐滞后。
+- 扩展 AI Agent 的偏好感知能力，例如主动推荐用户近期可能感兴趣的新品或相似商品。
+- 若首页需要继续细化，可在个性化推荐基础上拆分“猜你喜欢 / 最近偏好 / 新品推荐”等推荐分组。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：用户偏好自动刷新与首页个性化推荐接口"。
+
 ## 2026-03-08 功能点：用户偏好记忆与历史偏好学习基础能力
 
 ### 本次目标

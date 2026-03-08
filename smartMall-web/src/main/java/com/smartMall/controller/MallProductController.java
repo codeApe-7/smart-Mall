@@ -6,6 +6,7 @@ import com.smartMall.entities.vo.ProductInfoDetailVo;
 import com.smartMall.entities.vo.ProductInfoListVO;
 import com.smartMall.entities.vo.ResponseVO;
 import com.smartMall.service.ProductInfoService;
+import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,8 +50,12 @@ public class MallProductController {
      * @return 推荐商品列表
      */
     @GetMapping("/recommend")
-    public ResponseVO<List<ProductInfoListVO>> recommend(@RequestParam(required = false) Integer limit) {
-        log.info("web load recommend products, limit={}", limit);
+    public ResponseVO<List<ProductInfoListVO>> recommend(@RequestParam(required = false) String userId,
+                                                         @RequestParam(required = false) Integer limit) {
+        log.info("web load recommend products, userId={}, limit={}", userId, limit);
+        if (StringTools.isNotEmpty(userId)) {
+            return ResponseVO.success(productInfoService.loadPersonalizedRecommendProducts(userId, limit));
+        }
         return ResponseVO.success(productInfoService.loadRecommendProducts(limit));
     }
 

@@ -1170,6 +1170,7 @@ curl --location --request POST 'http://localhost:8080/api/shipping/confirmReceiv
 ## 30. 提交商品评价
 
 > 对已收货订单的订单项提交评价（评分 + 评价内容），全部订单项评价完成后订单自动推进到"已完成"状态。
+> 提交成功后会异步刷新用户偏好档案，可再调用 `/api/preference/profile` 校验 `reviewCount`、`preferenceTags` 或 `updateTime` 的变化。
 
 - **Method**: `POST`
 - **URL**: `http://localhost:8080/api/review/submit`
@@ -1219,6 +1220,7 @@ curl --location --request POST 'http://localhost:8080/api/review/submit' \
 - `code = 200`
 - 返回评价列表，每条包含 `reviewId`、`rating`、`content`、`productName`、`createTime`
 - 全部订单项评价完成时，订单状态推进到 `30`（已完成）
+- 评价提交成功后，用户偏好档案会异步刷新
 
 ### 测试用例
 | 用例ID | 场景 | 请求参数 | 预期结果 |
@@ -1231,6 +1233,7 @@ curl --location --request POST 'http://localhost:8080/api/review/submit' \
 | REVIEW-SUBMIT-06 | productId 不匹配 | itemId 对应的商品不是传入的 productId | 返回 `code=601`，提示 `productId mismatch` |
 | REVIEW-SUBMIT-07 | 评分超出范围 | `rating=0` 或 `rating=6` | 返回 `code=601`，提示 `rating must be between 1 and 5` |
 | REVIEW-SUBMIT-08 | 缺少 reviews | `reviews=[]` | 返回 `code=601`，提示 `reviews can not be empty` |
+| REVIEW-SUBMIT-09 | 提交评价后联动刷新偏好 | 先提交有效评价，再查询 `/api/preference/profile?userId=u10001` | 提交返回 `code=200`，随后偏好档案 `reviewCount` 增长或 `updateTime` 更新 |
 
 ---
 
@@ -1359,19 +1362,26 @@ curl --location --request POST 'http://localhost:8080/api/product/list' \
 ## 34. 查询推荐商品
 
 > 查询用户端推荐商品列表，默认返回 6 条。
+> 传 `userId` 时优先返回首页个性化推荐结果；若当前用户还没有偏好档案，服务端会先尝试自动刷新偏好后再推荐，仍无有效偏好时回退到通用推荐。
 
 - **Method**: `GET`
-- **URL**: `http://localhost:8080/api/product/recommend?limit=4`
+- **URL**: `http://localhost:6050/api/product/recommend?userId=u10001&limit=4`
+
+### Query 参数
+- `userId`: (String) 用户ID；传入后开启个性化推荐逻辑（Optional）
+- `limit`: (Integer) 返回条数，默认 6，最大 20（Optional）
 
 ### cURL 示例
 ```bash
-curl --location --request GET 'http://localhost:8080/api/product/recommend?limit=4'
+curl --location --request GET 'http://localhost:6050/api/product/recommend?userId=u10001&limit=4'
 ```
 
 ### 成功断言
 - `code = 200`
 - 返回数组结构，每条记录包含 `productId/productName/minPrice/maxPrice`
 - `limit` 不传时使用默认值
+- 传 `userId` 时优先返回偏好分类商品，不足时用通用推荐补齐
+- 当用户尚无偏好档案时，接口会自动触发一次偏好刷新，再决定是否回退到通用推荐
 
 ### 测试用例
 | 用例ID | 场景 | 请求参数 | 预期结果 |
@@ -1380,6 +1390,9 @@ curl --location --request GET 'http://localhost:8080/api/product/recommend?limit
 | PRODUCT-RECOMMEND-02 | 不传 limit | 无 | 返回 `code=200`，使用默认推荐条数 |
 | PRODUCT-RECOMMEND-03 | limit 小于 1 | `limit=0` | 返回 `code=200`，回退为默认条数 |
 | PRODUCT-RECOMMEND-04 | limit 超出上限 | `limit=99` | 返回 `code=200`，按服务端最大限制返回 |
+| PRODUCT-RECOMMEND-05 | 首页个性化推荐 | `userId=u10001&limit=4` | 返回 `code=200`，优先命中用户偏好分类商品，不足时补齐通用推荐 |
+| PRODUCT-RECOMMEND-06 | 首次命中个性化推荐 | `userId=u99999&limit=4` 且此前无偏好档案 | 返回 `code=200`，服务端先尝试刷新偏好，再返回个性化或通用推荐结果 |
+| PRODUCT-RECOMMEND-07 | userId 为空字符串 | `userId=&limit=4` | 返回 `code=200`，按未传 `userId` 处理，走通用推荐 |
 
 ---
 
@@ -1887,6 +1900,7 @@ curl --location --request GET 'http://localhost:6050/api/preference/profile?user
 | --- | --- | --- | --- |
 | PREFERENCE-PROFILE-01 | 有购买历史的用户 | `userId=u10001` | 返回 `code=200`，`data` 包含偏好分类、价格区间、搜索关键词、偏好标签等字段 |
 | PREFERENCE-PROFILE-02 | 无历史数据的用户 | `userId=u99999` | 返回 `code=200`，`data.favoriteCategoryIds=[]`，`data.orderCount=0` |
+| PREFERENCE-PROFILE-03 | 评价提交后的偏好联动校验 | 先成功调用 `/api/review/submit`，再查询 `userId=u10001` | 返回 `code=200`，`data.reviewCount`、`data.updateTime` 或 `data.preferenceTags` 发生变化 |
 
 ---
 

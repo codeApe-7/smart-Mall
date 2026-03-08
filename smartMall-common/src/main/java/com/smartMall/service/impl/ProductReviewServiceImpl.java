@@ -18,6 +18,7 @@ import com.smartMall.mapper.ProductReviewMapper;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.OrderItemService;
 import com.smartMall.service.ProductReviewService;
+import com.smartMall.service.UserPreferenceRefreshTrigger;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,9 @@ public class ProductReviewServiceImpl extends ServiceImpl<ProductReviewMapper, P
 
     @Resource
     private OrderItemService orderItemService;
+
+    @Resource
+    private UserPreferenceRefreshTrigger userPreferenceRefreshTrigger;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -106,6 +110,7 @@ public class ProductReviewServiceImpl extends ServiceImpl<ProductReviewMapper, P
 
         log.info("submit review success, userId={}, orderId={}, count={}",
                 dto.getUserId(), dto.getOrderId(), newReviews.size());
+        userPreferenceRefreshTrigger.refreshUserPreferenceAsync(dto.getUserId(), "review_submit");
         return newReviews.stream().map(r -> buildReviewVO(r, orderItemMap)).toList();
     }
 

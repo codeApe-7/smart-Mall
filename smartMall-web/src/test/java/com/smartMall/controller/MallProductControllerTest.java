@@ -19,6 +19,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -72,6 +73,20 @@ class MallProductControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data[0].productId").value("p2"));
+    }
+
+    @Test
+    void recommendShouldReturnPersonalizedRecommendProductsWhenUserIdProvided() throws Exception {
+        ProductInfoListVO item = new ProductInfoListVO();
+        item.setProductId("p9");
+        when(productInfoService.loadPersonalizedRecommendProducts("u1", 4)).thenReturn(List.of(item));
+
+        mockMvc.perform(get("/product/recommend").param("userId", "u1").param("limit", "4"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].productId").value("p9"));
+
+        verify(productInfoService).loadPersonalizedRecommendProducts("u1", 4);
     }
 
     @Test

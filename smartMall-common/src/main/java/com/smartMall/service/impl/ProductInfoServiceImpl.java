@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.smartMall.entities.config.ProductSearchProperties;
+import com.smartMall.entities.config.UserPreferenceProperties;
 import com.smartMall.entities.domain.ProductInfo;
 import com.smartMall.entities.domain.ProductPropertyValue;
 import com.smartMall.entities.domain.ProductSku;
@@ -81,6 +82,9 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
 
     @Resource
     private ProductSearchProperties productSearchProperties = new ProductSearchProperties();
+
+    @Resource
+    private UserPreferenceProperties userPreferenceProperties = new UserPreferenceProperties();
 
     @Resource
     private ProductPropertyValueService productPropertyValueService;
@@ -284,10 +288,11 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
             return loadRecommendProducts(pageSize);
         }
         try {
-            UserPreference preference = userPreferenceService.getOne(
-                    new LambdaQueryWrapper<UserPreference>()
-                            .eq(UserPreference::getUserId, userId)
-                            .last("LIMIT 1"));
+            UserPreference preference = getUserPreference(userId);
+            if (preference == null) {
+                userPreferenceService.refreshUserPreference(userId);
+                preference = getUserPreference(userId);
+            }
             if (preference == null || StringTools.isEmpty(preference.getFavoriteCategoryIds())) {
                 log.info("no user preference found, fallback to general recommend, userId={}", userId);
                 return loadRecommendProducts(pageSize);
@@ -344,10 +349,19 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
     }
 
     private int normalizeRecommendLimit(Integer limit) {
+        int defaultLimit = userPreferenceProperties.getDefaultRecommendLimit() > 0
+                ? userPreferenceProperties.getDefaultRecommendLimit()
+                : DEFAULT_RECOMMEND_LIMIT;
         if (limit == null || limit < 1) {
-            return DEFAULT_RECOMMEND_LIMIT;
+            return defaultLimit;
         }
         return Math.min(limit, MAX_RECOMMEND_LIMIT);
+    }
+
+    private UserPreference getUserPreference(String userId) {
+        return userPreferenceService.getOne(new LambdaQueryWrapper<UserPreference>()
+                .eq(UserPreference::getUserId, userId)
+                .last("LIMIT 1"));
     }
 
     private boolean shouldUseSemanticSearch(ProductQueryDTO queryDTO) {
