@@ -12,6 +12,7 @@ import com.smartMall.entities.domain.ProductInfo;
 import com.smartMall.entities.domain.ProductPropertyValue;
 import com.smartMall.entities.domain.ProductSku;
 import com.smartMall.entities.domain.SysCategory;
+import com.smartMall.entities.domain.UserPreference;
 import com.smartMall.entities.dto.ProductQueryDTO;
 import com.smartMall.entities.dto.ProductSaveDTO;
 import com.smartMall.entities.enums.ProductStatusEnum;
@@ -29,6 +30,7 @@ import com.smartMall.service.ProductInfoService;
 import com.smartMall.service.ProductPropertyValueService;
 import com.smartMall.service.ProductSkuService;
 import com.smartMall.service.SysCategoryService;
+import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -38,10 +40,12 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,6 +90,10 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
 
     @Resource
     private SysCategoryService sysCategoryService;
+
+    @Lazy
+    @Resource
+    private UserPreferenceService userPreferenceService;
 
     @Override
     public PageResultVO<ProductInfoListVO> loadProductList(ProductQueryDTO queryDTO) {
@@ -267,6 +275,72 @@ public class ProductInfoServiceImpl extends ServiceImpl<ProductInfoMapper, Produ
         queryDTO.setStatus(ProductStatusEnum.ON_SALE.getStatus());
         log.info("load recommend products, limit={}", pageSize);
         return loadProductList(queryDTO).getRecords();
+    }
+
+    @Override
+    public List<ProductInfoListVO> loadPersonalizedRecommendProducts(String userId, Integer limit) {
+        int pageSize = normalizeRecommendLimit(limit);
+        if (StringTools.isEmpty(userId)) {
+            return loadRecommendProducts(pageSize);
+        }
+        try {
+            UserPreference preference = userPreferenceService.getOne(
+                    new LambdaQueryWrapper<UserPreference>()
+                            .eq(UserPreference::getUserId, userId)
+                            .last("LIMIT 1"));
+            if (preference == null || StringTools.isEmpty(preference.getFavoriteCategoryIds())) {
+                log.info("no user preference found, fallback to general recommend, userId={}", userId);
+                return loadRecommendProducts(pageSize);
+            }
+
+            List<String> categoryIds = Arrays.stream(preference.getFavoriteCategoryIds().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+            List<String> recentProductIds = StringTools.isEmpty(preference.getRecentProductIds())
+                    ? List.of()
+                    : Arrays.stream(preference.getRecentProductIds().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+
+            LambdaQueryWrapper<ProductInfo> queryWrapper = new LambdaQueryWrapper<ProductInfo>()
+                    .eq(ProductInfo::getStatus, ProductStatusEnum.ON_SALE.getStatus())
+                    .in(ProductInfo::getCategoryId, categoryIds);
+            if (preference.getMinPricePreference() != null) {
+                queryWrapper.ge(ProductInfo::getMinPrice, preference.getMinPricePreference());
+            }
+            if (preference.getMaxPricePreference() != null) {
+                queryWrapper.le(ProductInfo::getMinPrice, preference.getMaxPricePreference());
+            }
+            if (!recentProductIds.isEmpty()) {
+                queryWrapper.notIn(ProductInfo::getProductId, recentProductIds);
+            }
+            queryWrapper.orderByDesc(ProductInfo::getTotalSale);
+
+            Page<ProductInfo> page = new Page<>(1, pageSize);
+            this.page(page, queryWrapper);
+            List<ProductInfoListVO> personalized = new ArrayList<>(buildProductListVOs(page.getRecords()));
+
+            if (personalized.size() < pageSize) {
+                List<String> existingIds = personalized.stream()
+                        .map(ProductInfoListVO::getProductId)
+                        .collect(Collectors.toList());
+                existingIds.addAll(recentProductIds);
+                List<ProductInfoListVO> general = loadRecommendProducts(pageSize);
+                for (ProductInfoListVO item : general) {
+                    if (!existingIds.contains(item.getProductId()) && personalized.size() < pageSize) {
+                        personalized.add(item);
+                        existingIds.add(item.getProductId());
+                    }
+                }
+            }
+            log.info("load personalized recommend products, userId={}, count={}", userId, personalized.size());
+            return personalized;
+        } catch (Exception e) {
+            log.warn("personalized recommend failed, fallback to general, userId={}", userId, e);
+            return loadRecommendProducts(pageSize);
+        }
     }
 
     private int normalizeRecommendLimit(Integer limit) {

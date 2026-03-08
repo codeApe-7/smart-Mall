@@ -208,3 +208,23 @@ CREATE TABLE `assistant_chat_log` (
     KEY `idx_session_id` (`session_id`) USING BTREE,
     KEY `idx_user_id_create_time` (`user_id`, `create_time`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='智能购物会话日志表';
+
+
+CREATE TABLE `user_preference` (
+    `preference_id` varchar(32) NOT NULL COMMENT '偏好ID',
+    `user_id` varchar(32) NOT NULL COMMENT '用户ID',
+    `favorite_category_ids` varchar(500) DEFAULT NULL COMMENT '偏好分类ID(逗号分隔)',
+    `favorite_category_names` varchar(500) DEFAULT NULL COMMENT '偏好分类名称(逗号分隔)',
+    `min_price_preference` decimal(10,2) DEFAULT NULL COMMENT '价格偏好下限',
+    `max_price_preference` decimal(10,2) DEFAULT NULL COMMENT '价格偏好上限',
+    `recent_search_keywords` varchar(1000) DEFAULT NULL COMMENT '近期搜索关键词(逗号分隔)',
+    `recent_product_ids` varchar(1000) DEFAULT NULL COMMENT '近期购买商品ID(逗号分隔)',
+    `average_rating` decimal(3,1) DEFAULT NULL COMMENT '用户平均评分',
+    `preference_tags` varchar(500) DEFAULT NULL COMMENT '偏好标签(逗号分隔)',
+    `order_count` int(11) DEFAULT '0' COMMENT '历史订单数',
+    `review_count` int(11) DEFAULT '0' COMMENT '历史评价数',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '最近更新时间',
+    PRIMARY KEY (`preference_id`) USING BTREE,
+    UNIQUE KEY `uk_user_id` (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='用户偏好档案表';

@@ -8,9 +8,11 @@ import com.smartMall.entities.vo.ProductKnowledgeCompareVO;
 import com.smartMall.entities.vo.AssistantChatResponseVO;
 import com.smartMall.entities.vo.PageResultVO;
 import com.smartMall.entities.vo.ProductKnowledgeVO;
+import com.smartMall.entities.vo.UserPreferenceVO;
 import com.smartMall.service.MallAssistantAgentService;
 import com.smartMall.service.MallAssistantService;
 import com.smartMall.service.ProductKnowledgeService;
+import com.smartMall.service.UserPreferenceService;
 import com.smartMall.utils.StringTools;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,9 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
 
     @Resource
     private ProductKnowledgeService productKnowledgeService;
+
+    @Resource
+    private UserPreferenceService userPreferenceService;
 
     public MallAssistantAgentServiceImpl(ObjectProvider<ChatClient.Builder> chatClientBuilderProvider,
                                          ObjectProvider<ToolCallbackProvider> toolCallbackProvider) {
@@ -140,6 +145,11 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
             promptBuilder.append("评价条目数量：").append(dto.getReviews().size()).append('\n');
             promptBuilder.append("如果用户要求提交评价，请根据上下文判断并尽量利用可用工具先查询订单信息。").append('\n');
         }
+        String preferenceContext = buildPreferenceContext(dto.getUserId());
+        if (StringTools.isNotEmpty(preferenceContext)) {
+            promptBuilder.append("用户偏好上下文：").append('\n');
+            promptBuilder.append(preferenceContext).append('\n');
+        }
         String knowledgeContext = buildKnowledgeContext(dto);
         if (StringTools.isNotEmpty(knowledgeContext)) {
             promptBuilder.append("商品知识增强上下文：").append('\n');
@@ -147,6 +157,39 @@ public class MallAssistantAgentServiceImpl implements MallAssistantAgentService 
         }
         promptBuilder.append("请根据上下文直接帮助用户完成商城操作。");
         return promptBuilder.toString();
+    }
+
+    private String buildPreferenceContext(String userId) {
+        if (StringTools.isEmpty(userId)) {
+            return "";
+        }
+        try {
+            UserPreferenceVO preference = userPreferenceService.getUserPreference(userId);
+            if (preference == null || preference.getPreferenceId() == null) {
+                return "";
+            }
+            StringBuilder sb = new StringBuilder();
+            if (preference.getFavoriteCategoryNames() != null && !preference.getFavoriteCategoryNames().isEmpty()) {
+                sb.append("偏好分类：").append(String.join("、", preference.getFavoriteCategoryNames())).append('\n');
+            }
+            if (preference.getMinPricePreference() != null && preference.getMaxPricePreference() != null) {
+                sb.append("价格区间：").append(preference.getMinPricePreference())
+                        .append("~").append(preference.getMaxPricePreference()).append("元").append('\n');
+            }
+            if (preference.getPreferenceTags() != null && !preference.getPreferenceTags().isEmpty()) {
+                sb.append("偏好标签：").append(String.join("、", preference.getPreferenceTags())).append('\n');
+            }
+            if (preference.getOrderCount() != null && preference.getOrderCount() > 0) {
+                sb.append("历史订单数：").append(preference.getOrderCount()).append('\n');
+            }
+            if (preference.getAverageRating() != null) {
+                sb.append("用户平均评分：").append(preference.getAverageRating()).append('\n');
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            log.warn("load user preference context failed, userId={}", userId, e);
+            return "";
+        }
     }
 
     private String buildKnowledgeContext(AssistantChatRequestDTO dto) {

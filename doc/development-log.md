@@ -1,5 +1,77 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：用户偏好记忆与历史偏好学习基础能力
+
+### 本次目标
+- 聚合用户的购买、搜索、评价、购物车行为数据，生成结构化偏好档案。
+- 提供偏好档案查询和刷新接口。
+- 基于偏好档案实现个性化推荐，替代规则助手的通用推荐。
+- 为 AI Agent 注入用户偏好上下文，提升对话推荐质量。
+- 新增 MCP 工具支持偏好查询和个性化推荐。
+
+### 本次实现
+- 在 `smartMall-common` 新增用户偏好领域模型：
+  - `UserPreference` 用户偏好档案实体
+- 新增偏好 VO：
+  - `UserPreferenceVO` 偏好档案视图（列表字段转 List 展示）
+- 新增偏好配置：
+  - `UserPreferenceProperties` 偏好聚合参数配置
+- 新增偏好 Mapper / Service / ServiceImpl：
+  - `UserPreferenceMapper`
+  - `UserPreferenceService`
+  - `UserPreferenceServiceImpl`（核心聚合逻辑）
+- 偏好聚合算法（`buildUserPreference`）：
+  - 查询近 90 天有效订单 → 关联订单明细 → 提取购买商品 ID 和价格
+  - 通过商品信息获取分类 ID → 频次排序取 top 5 分类
+  - 购物车商品补充分类偏好
+  - 取购买价格 min/max 作为价格偏好区间
+  - 从 `assistant_chat_log`（intent=PRODUCT_SEARCH）提取近期搜索关键词
+  - 从 `product_review` 计算用户平均评分和评价数
+  - 分类名称 + 高频搜索词组合为偏好标签
+  - Upsert 写入 `user_preference` 表
+- 在 `ProductInfoService` 新增 `loadPersonalizedRecommendProducts(userId, limit)` 方法：
+  - 偏好分类优先 + 价格区间过滤 + 排除已购商品
+  - 按 `totalSale DESC` 排序
+  - 不足时用通用推荐补齐
+- 修改 `ProductInfoServiceImpl`：
+  - 注入 `UserPreferenceService`（`@Lazy` 解决循环依赖）
+  - 实现个性化推荐逻辑
+- 修改 `MallAssistantServiceImpl.handleRecommend()`：
+  - 有 userId 时改用 `loadPersonalizedRecommendProducts`
+- 修改 `MallAssistantAgentServiceImpl.buildUserPrompt()`：
+  - 新增 `buildPreferenceContext()` 注入偏好分类、价格区间、偏好标签等上下文
+- 在 `smartMall-web` 新增 `MallPreferenceController`，提供接口：
+  - `GET /api/preference/profile?userId=xxx` 查询用户偏好档案
+  - `POST /api/preference/refresh?userId=xxx` 刷新用户偏好档案
+- 在 `smartMall-mcp` 修改 `SmartMallMcpTools`，新增 MCP 工具：
+  - `get_user_preference` 获取用户偏好档案
+  - `personalized_recommend` 基于用户偏好推荐商品
+- 在 `application.yml`（web + mcp）新增 `smart-mall.preference.*` 配置项
+- 在 `doc/sql/smart-mall.sql` 追加 `user_preference` 表结构
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web,smartMall-mcp -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-web`
+- `smartMall-mcp`
+
+### 下一步建议
+- 实现用户偏好自动刷新（如订单完成、评价提交后触发异步刷新）。
+- 基于偏好数据实现首页个性化推荐接口。
+- 扩展 AI Agent 的偏好感知能力（如主动推荐用户可能感兴趣的新品）。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：用户偏好记忆与历史偏好学习基础能力"。
+
 ## 2026-03-08 功能点：用户端商品评价与订单完成
 
 ### 本次目标

@@ -1860,3 +1860,55 @@ curl --location --request POST 'http://localhost:8080/api/assistant/history' \
 | PRODUCT-KNOWLEDGE-COMPARE-02 | 按自然语言关键词对比 | `keyword` 包含“对比/哪个好/vs”等比较诉求 | 返回 `code=200`，自动抽取多款商品生成比较结果 |
 | PRODUCT-KNOWLEDGE-COMPARE-03 | 仅匹配到 1 款商品 | `keyword` 较窄或只传单个商品ID | 返回 `code=200`，`data.comparable=false` 或仅单商品结果，并提示补充条件 |
 | PRODUCT-KNOWLEDGE-COMPARE-04 | 无匹配商品 | 不存在的关键词或空商品ID集合 | 返回 `code=200`，`data.products` 为空，给出无法比较提示 |
+
+---
+
+## 用户偏好档案
+
+### 查询用户偏好档案
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6050/api/preference/profile?userId=u10001`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6050/api/preference/profile?userId=u10001'
+```
+
+### 成功断言
+- `code = 200`
+- `data.userId` 等于请求参数 `userId`
+- `data.favoriteCategoryIds`、`data.favoriteCategoryNames`、`data.preferenceTags` 为列表
+- `data.minPricePreference`、`data.maxPricePreference` 为数值或 null
+- `data.orderCount`、`data.reviewCount` 为整数
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PREFERENCE-PROFILE-01 | 有购买历史的用户 | `userId=u10001` | 返回 `code=200`，`data` 包含偏好分类、价格区间、搜索关键词、偏好标签等字段 |
+| PREFERENCE-PROFILE-02 | 无历史数据的用户 | `userId=u99999` | 返回 `code=200`，`data.favoriteCategoryIds=[]`，`data.orderCount=0` |
+
+---
+
+### 刷新用户偏好档案
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6050/api/preference/refresh?userId=u10001`
+
+### cURL 示例
+```bash
+curl --location --request POST 'http://localhost:6050/api/preference/refresh?userId=u10001'
+```
+
+### 成功断言
+- `code = 200`
+- `data.preferenceId` 不为空
+- `data.updateTime` 不为空
+- `data.favoriteCategoryIds`、`data.preferenceTags` 为列表
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| PREFERENCE-REFRESH-01 | 首次刷新 | `userId=u10001`（无已有偏好记录） | 返回 `code=200`，新建偏好记录，`data.preferenceId` 不为空 |
+| PREFERENCE-REFRESH-02 | 再次刷新 | `userId=u10001`（已有偏好记录） | 返回 `code=200`，更新偏好记录，`data.updateTime` 变化 |
+| PREFERENCE-REFRESH-03 | 无行为数据 | `userId=u99999` | 返回 `code=200`，生成空偏好档案 |

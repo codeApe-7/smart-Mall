@@ -45,6 +45,11 @@ smart-mall:
     elasticsearch-uri: ${SMART_MALL_ES_URL:${spring.elasticsearch.uris}}
     product-index-name: ${SMART_MALL_PRODUCT_INDEX:smart_mall_product}
     semantic-candidate-size: ${SMART_MALL_SEMANTIC_CANDIDATE_SIZE:50}
+  preference:
+    recent-order-days: ${SMART_MALL_PREFERENCE_RECENT_DAYS:90}
+    top-category-count: ${SMART_MALL_PREFERENCE_TOP_CATEGORY:5}
+    recent-search-keyword-count: ${SMART_MALL_PREFERENCE_SEARCH_KEYWORD_COUNT:10}
+    default-recommend-limit: ${SMART_MALL_PREFERENCE_RECOMMEND_LIMIT:6}
   rag:
     product:
       enabled: ${SMART_MALL_RAG_PRODUCT_ENABLED:true}

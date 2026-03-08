@@ -147,7 +147,12 @@ public class MallAssistantServiceImpl implements MallAssistantService {
 
     private AssistantChatResponseVO handleRecommend(AssistantChatRequestDTO dto, String sessionId,
                                                     AssistantIntentEnum intent) {
-        List<ProductInfoListVO> recommendProducts = productInfoService.loadRecommendProducts(DEFAULT_RECOMMEND_LIMIT);
+        List<ProductInfoListVO> recommendProducts;
+        if (StringTools.isNotEmpty(dto.getUserId())) {
+            recommendProducts = productInfoService.loadPersonalizedRecommendProducts(dto.getUserId(), DEFAULT_RECOMMEND_LIMIT);
+        } else {
+            recommendProducts = productInfoService.loadRecommendProducts(DEFAULT_RECOMMEND_LIMIT);
+        }
         AssistantChatPayloadVO payload = new AssistantChatPayloadVO();
         payload.setProductPage(new PageResultVO<>(1, DEFAULT_RECOMMEND_LIMIT,
                 (long) recommendProducts.size(), recommendProducts));

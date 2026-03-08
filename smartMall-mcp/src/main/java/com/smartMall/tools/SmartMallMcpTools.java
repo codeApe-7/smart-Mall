@@ -17,12 +17,14 @@ import com.smartMall.entities.vo.ProductKnowledgeVO;
 import com.smartMall.entities.vo.ProductReviewVO;
 import com.smartMall.entities.vo.RefundInfoVO;
 import com.smartMall.entities.vo.ShippingInfoVO;
+import com.smartMall.entities.vo.UserPreferenceVO;
 import com.smartMall.service.OrderInfoService;
 import com.smartMall.service.ProductInfoService;
 import com.smartMall.service.ProductKnowledgeService;
 import com.smartMall.service.ProductReviewService;
 import com.smartMall.service.RefundInfoService;
 import com.smartMall.service.ShippingInfoService;
+import com.smartMall.service.UserPreferenceService;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -42,27 +44,32 @@ public class SmartMallMcpTools {
     private final RefundInfoService refundInfoService;
     private final ShippingInfoService shippingInfoService;
     private final ProductReviewService productReviewService;
+    private final UserPreferenceService userPreferenceService;
 
     public SmartMallMcpTools(ProductInfoService productInfoService,
                              ProductKnowledgeService productKnowledgeService,
                              OrderInfoService orderInfoService,
                              RefundInfoService refundInfoService,
                              ShippingInfoService shippingInfoService,
-                             ProductReviewService productReviewService) {
+                             ProductReviewService productReviewService,
+                             UserPreferenceService userPreferenceService) {
         this.productInfoService = productInfoService;
         this.productKnowledgeService = productKnowledgeService;
         this.orderInfoService = orderInfoService;
         this.refundInfoService = refundInfoService;
         this.shippingInfoService = shippingInfoService;
         this.productReviewService = productReviewService;
+        this.userPreferenceService = userPreferenceService;
     }
 
     public SmartMallMcpTools(ProductInfoService productInfoService,
                              OrderInfoService orderInfoService,
                              RefundInfoService refundInfoService,
                              ShippingInfoService shippingInfoService,
-                             ProductReviewService productReviewService) {
-        this(productInfoService, null, orderInfoService, refundInfoService, shippingInfoService, productReviewService);
+                             ProductReviewService productReviewService,
+                             UserPreferenceService userPreferenceService) {
+        this(productInfoService, null, orderInfoService, refundInfoService, shippingInfoService,
+                productReviewService, userPreferenceService);
     }
 
     @Tool(name = "search_visible_products", description = "Search visible products by keyword")
@@ -183,6 +190,19 @@ public class SmartMallMcpTools {
             @ToolParam(description = "user id", required = true) String userId,
             @ToolParam(description = "order id", required = true) String orderId) {
         return productReviewService.getOrderReviews(userId, orderId);
+    }
+
+    @Tool(name = "get_user_preference", description = "Get user preference profile including favorite categories, price range, search history and tags")
+    public UserPreferenceVO getUserPreference(
+            @ToolParam(description = "user id", required = true) String userId) {
+        return userPreferenceService.getUserPreference(userId);
+    }
+
+    @Tool(name = "personalized_recommend", description = "Recommend products based on user preference profile")
+    public List<ProductInfoListVO> personalizedRecommend(
+            @ToolParam(description = "user id", required = true) String userId,
+            @ToolParam(description = "recommend product limit", required = false) Integer limit) {
+        return productInfoService.loadPersonalizedRecommendProducts(userId, limit);
     }
 
     private List<String> parseProductIds(String productIds) {

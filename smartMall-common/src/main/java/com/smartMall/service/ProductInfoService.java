@@ -70,4 +70,13 @@ public interface ProductInfoService extends IService<ProductInfo> {
      * @return 推荐商品
      */
     List<ProductInfoListVO> loadRecommendProducts(Integer limit);
+
+    /**
+     * 基于用户偏好的个性化推荐商品列表
+     *
+     * @param userId 用户ID
+     * @param limit  返回条数
+     * @return 个性化推荐商品
+     */
+    List<ProductInfoListVO> loadPersonalizedRecommendProducts(String userId, Integer limit);
 }
