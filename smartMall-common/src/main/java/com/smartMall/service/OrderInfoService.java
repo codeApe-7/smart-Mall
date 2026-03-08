@@ -32,4 +32,10 @@ public interface OrderInfoService extends IService<OrderInfo> {
     OrderInfo getUserOrder(String userId, String orderId);
 
     void markOrderPaid(String orderId, Date payTime);
+
+    void markOrderRefundRequested(String orderId, Date refundTime);
+
+    void markOrderRefunded(String orderId, Date refundTime);
+
+    void revertOrderFromRefund(String orderId);
 }

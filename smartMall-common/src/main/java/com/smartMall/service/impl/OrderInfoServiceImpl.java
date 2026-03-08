@@ -190,6 +190,69 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         log.info("mark order paid, orderId={}, payTime={}", orderId, finalPayTime);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markOrderRefundRequested(String orderId, Date refundTime) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (!OrderStatusEnum.PAID.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support refund request");
+        }
+        Date now = refundTime == null ? new Date() : refundTime;
+        orderInfo.setOrderStatus(OrderStatusEnum.REFUND_REQUESTED.getStatus());
+        orderInfo.setRefundTime(now);
+        orderInfo.setUpdateTime(now);
+        this.updateById(orderInfo);
+        log.info("mark order refund requested, orderId={}", orderId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markOrderRefunded(String orderId, Date refundTime) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (!OrderStatusEnum.REFUND_REQUESTED.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order status does not support refund approval");
+        }
+        Date now = refundTime == null ? new Date() : refundTime;
+        orderInfo.setOrderStatus(OrderStatusEnum.REFUNDED.getStatus());
+        orderInfo.setRefundTime(now);
+        orderInfo.setUpdateTime(now);
+        this.updateById(orderInfo);
+        log.info("mark order refunded, orderId={}", orderId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void revertOrderFromRefund(String orderId) {
+        if (StringTools.isEmpty(orderId)) {
+            throw new BusinessException(ResponseCodeEnum.PARAM_ERROR, "orderId is required");
+        }
+        OrderInfo orderInfo = this.getById(orderId);
+        if (orderInfo == null) {
+            throw new BusinessException(ResponseCodeEnum.DATA_NOT_EXIST, "order not found");
+        }
+        if (!OrderStatusEnum.REFUND_REQUESTED.getStatus().equals(orderInfo.getOrderStatus())) {
+            throw new BusinessException(ResponseCodeEnum.OPERATION_FAILED, "order is not in refund requested status");
+        }
+        Date now = new Date();
+        orderInfo.setOrderStatus(OrderStatusEnum.PAID.getStatus());
+        orderInfo.setRefundTime(null);
+        orderInfo.setUpdateTime(now);
+        this.updateById(orderInfo);
+        log.info("revert order from refund, orderId={}", orderId);
+    }
+
     private List<ShoppingCartItemVO> loadSelectedCartItems(String userId, List<String> cartIds, boolean requireAvailable) {
         validateUserId(userId);
         if (cartIds == null || cartIds.isEmpty()) {

@@ -58,6 +58,9 @@ public class OrderInfo implements Serializable {
     @TableField("cancel_time")
     private Date cancelTime;
 
+    @TableField("refund_time")
+    private Date refundTime;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

@@ -1,5 +1,70 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：用户端退款申请与退款状态流转
+
+### 本次目标
+- 衔接已支付订单，补齐用户端退款申请能力。
+- 提供退款审批（模拟同意/拒绝）入口，推动订单状态从已支付流转到退款申请中，再到已退款或恢复已支付。
+- 为后续确认收货、订单完成、商品评价等功能打基础。
+
+### 本次实现
+- 在 `smartMall-common` 新增退款领域模型与枚举：
+  - `RefundInfo` 退款记录实体
+  - `RefundStatusEnum`（PENDING / APPROVED / REJECTED）
+- 新增退款 DTO / VO：
+  - `RefundApplyDTO` 退款申请入参
+  - `RefundAuditDTO` 退款审批入参
+  - `RefundInfoVO` 退款信息视图
+- 新增退款 Mapper / Service / ServiceImpl：
+  - `RefundInfoMapper`
+  - `RefundInfoService`
+  - `RefundInfoServiceImpl`
+- 在 `smartMall-web` 新增 `MallRefundController`，提供接口：
+  - `POST /api/refund/apply` 提交退款申请
+  - `GET /api/refund/detail?userId=xxx&orderId=xxx` 查询退款详情
+  - `POST /api/refund/approve` 同意退款（模拟）
+  - `POST /api/refund/reject` 拒绝退款
+- 退款能力已支持：
+  - 仅已支付（PAID）订单可发起退款。
+  - 重复申请退款时复用未处理的退款单。
+  - 申请退款后订单状态推进到"退款申请中"。
+  - 同意退款后订单状态推进到"已退款"，退款单标记为已通过。
+  - 拒绝退款后订单状态恢复到"已支付"，退款单标记为已拒绝。
+  - 退款金额默认等于订单总金额（全额退款）。
+- 扩展 `OrderStatusEnum` 新增：
+  - `REFUND_REQUESTED(60, "退款申请中")`
+  - `REFUNDED(70, "已退款")`
+- `OrderInfo` 新增 `refundTime` 字段，`OrderDetailVO` 同步回显退款时间。
+- 在 `OrderInfoService` / `OrderInfoServiceImpl` 新增：
+  - `markOrderRefundRequested` 标记订单为退款申请中
+  - `markOrderRefunded` 标记订单为已退款
+  - `revertOrderFromRefund` 退款拒绝后恢复订单状态
+- 在 `doc/sql/smart-mall.sql` 追加：
+  - `order_info.refund_time` 字段
+  - `order_info.order_status` 注释更新（含退款状态）
+  - `refund_info` 表结构
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-web -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-Dmaven.test.skip=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/sql`
+- `doc/development-log.md`
+- `smartMall-common`
+- `smartMall-web`
+
+### 下一步建议
+- 实现确认收货与订单完成流程（补充 SHIPPED / RECEIVED 状态、模拟物流）。
+- 补充商品评价功能。
+- 再衔接智能购物模式中的对话式订单操作。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：用户端退款申请与退款状态流转"。
+
 ## 2026-03-07 功能点：用户端支付下单与支付回调基础能力
 
 ### 本次目标
