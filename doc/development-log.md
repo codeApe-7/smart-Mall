@@ -1,5 +1,66 @@
 # SmartMall 开发日志
 
+## 2026-03-08 功能点：管理后台订单管理基础能力
+
+### 本次目标
+- 按功能导图继续补齐管理后台“订单管理”能力。
+- 提供后台订单列表、订单详情、后台发货、退款审批列表与操作接口。
+- 复用已有用户端订单/物流/退款服务，避免实现两套状态流转逻辑。
+
+### 本次实现
+- 在 `smartMall-common` 新增后台订单管理 DTO：
+  - `AdminOrderQueryDTO`
+  - `AdminRefundQueryDTO`
+  - `AdminShipOrderDTO`
+- 在 `smartMall-common` 新增后台订单管理 VO：
+  - `AdminOrderListVO`
+  - `AdminRefundInfoVO`
+- 在 `smartMall-common` 新增后台订单管理 Service / ServiceImpl：
+  - `AdminOrderManageService`
+  - `AdminOrderManageServiceImpl`
+- 后台订单管理能力包括：
+  - 分页查询全量订单，支持按订单号、用户ID、订单状态过滤
+  - 查询单个订单详情（复用 `OrderInfoService.getOrderDetail`）
+  - 后台对已支付订单发货（复用 `ShippingInfoService.shipOrder`）
+  - 按订单查询物流详情
+  - 分页查询退款单，支持按退款单号、订单号、用户ID、退款状态过滤
+  - 后台同意/拒绝退款（复用 `RefundInfoService.approveRefund/rejectRefund`）
+- 在 `smartMall-admin` 新增控制器：
+  - `OrderManageController`
+  - `RefundManageController`
+- 新增后台接口：
+  - `POST /api/order/list`
+  - `GET /api/order/detail/{orderId}`
+  - `POST /api/order/ship`
+  - `GET /api/order/shipping/{orderId}`
+  - `POST /api/refund/list`
+  - `GET /api/refund/detail/{refundId}`
+  - `POST /api/refund/approve/{refundId}`
+  - `POST /api/refund/reject/{refundId}`
+- 更新 `apifox_requests.md`：
+  - 新增管理后台订单管理接口测试文档
+
+### 验证记录
+- 执行命令：
+  - `mvn -q -pl smartMall-common,smartMall-admin -am "-Dmaven.repo.local=C:\Users\15712\.m2\repository" "-DfailIfNoTests=false" test`
+- 环境说明：
+  - Maven 使用 `D:\Java\java-21-openjdk-21.0.4.0.7-1.win.jdk.x86_64` 运行。
+- 测试结果：编译与测试通过。
+
+### 当前影响范围
+- `doc/development-log.md`
+- `apifox_requests.md`
+- `smartMall-common`
+- `smartMall-admin`
+
+### 下一步建议
+- 继续补齐管理后台用户管理能力，例如用户列表、用户下单/退款概览、启用/禁用状态维护。
+- 补充管理后台订单评价管理或售后处理视图，承接功能导图中的订单评价与用户反馈场景。
+- 若后台发货需要更贴近真实业务，可扩展批量发货、物流公司枚举和发货备注能力。
+
+### 提交记录
+- Git Commit: 本次功能点提交为"完成功能点：管理后台订单管理基础能力"。
+
 ## 2026-03-08 功能点：管理后台首页数据概览基础能力
 
 ### 本次目标

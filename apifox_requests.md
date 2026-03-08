@@ -1959,6 +1959,185 @@ curl --location --request GET 'http://localhost:6061/api/dashboard/overview'
 
 ---
 
+# Apifox 接口调试文档 - 管理后台订单管理
+
+以下内容对应功能导图中的“管理后台 / 订单管理”。
+
+> 当前后台服务默认访问前缀为 `http://localhost:6061/api`。
+>
+> 推荐联调顺序：`查询订单列表` → `查询订单详情` → `后台发货` → `查询物流详情`；退款场景使用 `查询退款列表` → `查询退款详情` → `同意/拒绝退款`。
+
+## 49. 管理后台查询订单列表
+
+> 分页查询全量订单，支持按订单号、用户ID、订单状态过滤。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/order/list`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+  "pageNo": 1,
+  "pageSize": 10,
+  "orderNo": "20260308",
+  "userId": "u10001",
+  "orderStatus": 10
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.records[*]` 包含 `orderId/orderNo/userId/orderStatus/orderStatusDesc/totalAmount/receiverName`
+- 支持按 `orderNo`、`userId`、`orderStatus` 组合过滤
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-ORDER-LIST-01 | 查询全部订单 | 仅传分页参数 | 返回 `code=200`，分页结构完整 |
+| ADMIN-ORDER-LIST-02 | 按订单状态过滤 | `orderStatus=10` | 返回 `code=200`，结果均为已支付订单 |
+| ADMIN-ORDER-LIST-03 | 按用户过滤 | `userId=u10001` | 返回 `code=200`，结果仅属于目标用户 |
+| ADMIN-ORDER-LIST-04 | 按订单号模糊查询 | `orderNo=20260308` | 返回 `code=200`，结果订单号匹配关键词 |
+
+## 50. 管理后台查询订单详情
+
+> 查询单个订单的完整详情，包含订单项和时间节点信息。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/order/detail/o10001`
+
+### cURL 示例
+```bash
+curl --location --request GET 'http://localhost:6061/api/order/detail/o10001'
+```
+
+### 成功断言
+- `code = 200`
+- `data` 包含 `userId/items/payTime/shipTime/refundTime/completeTime`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-ORDER-DETAIL-01 | 查询有效订单 | 有效 `orderId` | 返回 `code=200`，订单详情完整 |
+| ADMIN-ORDER-DETAIL-02 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
+
+## 51. 管理后台发货
+
+> 后台对已支付订单执行发货，底层复用现有物流服务。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/order/ship`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+  "orderId": "o10001",
+  "shippingCompany": "顺丰速运"
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.trackingNo`、`data.shippingCompany`、`data.shippingStatus` 存在
+- 发货后订单状态推进到 `40`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-ORDER-SHIP-01 | 正常发货 | 已支付订单 | 返回 `code=200`，生成或复用物流单 |
+| ADMIN-ORDER-SHIP-02 | 订单状态不支持发货 | 待支付/已发货订单 | 返回 `code=501`，提示 `order status does not support shipping` |
+| ADMIN-ORDER-SHIP-03 | 订单不存在 | 无效 `orderId` | 返回 `code=405`，提示 `order not found` |
+
+## 52. 管理后台查询物流详情
+
+> 后台按订单ID查询物流信息。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/order/shipping/o10001`
+
+### 成功断言
+- `code = 200`
+- `data` 包含 `trackingNo/shippingCompany/shippingStatus/createTime/receiveTime`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-SHIPPING-DETAIL-01 | 查询有效物流 | 已发货订单 `orderId` | 返回 `code=200`，物流详情完整 |
+| ADMIN-SHIPPING-DETAIL-02 | 无物流记录 | 未发货订单 `orderId` | 返回 `code=405`，提示 `shipping record not found` |
+
+## 53. 管理后台查询退款列表
+
+> 分页查询退款单，支持按退款单号、订单号、用户ID、退款状态过滤。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/refund/list`
+- **Content-Type**: `application/json`
+
+### Body 示例 (JSON)
+```json
+{
+  "pageNo": 1,
+  "pageSize": 10,
+  "refundNo": "R20260308",
+  "orderNo": "20260308",
+  "userId": "u10001",
+  "refundStatus": 0
+}
+```
+
+### 成功断言
+- `code = 200`
+- `data.records[*]` 包含 `refundId/refundNo/orderNo/userId/refundAmount/refundStatus/refundStatusDesc`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-REFUND-LIST-01 | 查询全部退款单 | 仅传分页参数 | 返回 `code=200`，分页结构完整 |
+| ADMIN-REFUND-LIST-02 | 查询待处理退款 | `refundStatus=0` | 返回 `code=200`，结果均为待处理 |
+| ADMIN-REFUND-LIST-03 | 按退款单号过滤 | `refundNo=R20260308` | 返回 `code=200`，结果退款单号匹配 |
+
+## 54. 管理后台查询退款详情
+
+> 查询指定退款单详情。
+
+- **Method**: `GET`
+- **URL**: `http://localhost:6061/api/refund/detail/r10001`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-REFUND-DETAIL-01 | 查询有效退款单 | 有效 `refundId` | 返回 `code=200`，退款详情完整 |
+| ADMIN-REFUND-DETAIL-02 | 退款单不存在 | 无效 `refundId` | 返回 `code=405`，提示 `refund record not found` |
+
+## 55. 管理后台同意退款
+
+> 后台同意待处理退款申请，底层复用退款审批服务。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/refund/approve/r10001`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-REFUND-APPROVE-01 | 正常同意退款 | 待处理 `refundId` | 返回 `code=200`，退款单变为已通过，订单状态变为已退款 |
+| ADMIN-REFUND-APPROVE-02 | 退款状态不支持审批 | 已审批退款单 | 返回 `code=501`，提示 `refund status does not support approval` |
+
+## 56. 管理后台拒绝退款
+
+> 后台拒绝待处理退款申请，底层复用退款拒绝服务。
+
+- **Method**: `POST`
+- **URL**: `http://localhost:6061/api/refund/reject/r10001`
+
+### 测试用例
+| 用例ID | 场景 | 请求参数 | 预期结果 |
+| --- | --- | --- | --- |
+| ADMIN-REFUND-REJECT-01 | 正常拒绝退款 | 待处理 `refundId` | 返回 `code=200`，退款单变为已拒绝，订单状态恢复 |
+| ADMIN-REFUND-REJECT-02 | 退款状态不支持拒绝 | 已审批退款单 | 返回 `code=501`，提示 `refund status does not support rejection` |
+
+---
+
 ### 刷新用户偏好档案
 
 - **Method**: `POST`
